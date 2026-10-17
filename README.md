@@ -41,7 +41,7 @@ Four characters to one token, rounded up. AngularAI enforces that estimate. The 
 
 ### A lock
 
-A phrase you forbid, or a secret in the reply, holds it. You see one sentence. The held text is not stored.
+A phrase you forbid, or a secret, in the reply or in the tool it asks for, holds it. Case, width, spacing, and zero-width characters do not hide a phrase. You see one sentence. The held text is not stored.
 
 </td>
 </tr>
@@ -96,7 +96,7 @@ angularai
 angularai agent "make the failing test pass"
 ```
 
-One tool a pass, inside one directory: `list`, `read`, `search`, `edit`, `write`, `run`. A path that leaves the directory is refused, including a symlink that points out. `list` and `search` skip one. A secret in a file that matches a known key pattern, or equals `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `ANGULARAI_API_KEY`, is redacted before the next pass. The step budget is 8. The reply is the only line on stdout.
+One tool a pass, inside one directory: `list`, `read`, `search`, `edit`, `write`, `run`. A path that leaves the directory is refused, including a symlink that points out. `list` and `search` skip one. A secret in a file is redacted before the next pass. The log keeps the task and the tool of each step, not what the tool returned. A log written before this version may still hold tool output. Nothing is deleted. The step budget is 8. The reply is the only line on stdout.
 
 `run` is off. `--allow-run` turns it on for that command.
 
@@ -156,9 +156,16 @@ No. `/clear` clears the screen. The cortex stays on disk.
 </details>
 
 <details>
+<summary>What counts as a secret?</summary>
+
+A known key shape: OpenAI, Anthropic, GitHub, Stripe, Google, AWS, GitLab, Hugging Face, Slack, a JWT, a PEM private key. A literal value after `password=`, `token:`, `api_key=`, and kin. A run of 32 or more key characters that mixes cases and digits and is random enough. Hex hashes and UUIDs are not. The value of an environment variable whose name holds KEY, TOKEN, SECRET, PASSWORD, PASSWD, or CREDENTIAL: eight characters or more anywhere, six or seven with a digit or a symbol as a whole word. A shorter or all-letter value is ignored. A secret in the input is refused. Anywhere else it is redacted or held. A key in a shape AngularAI does not know passes.
+
+</details>
+
+<details>
 <summary>What does a failure look like?</summary>
 
-No cortex yet: `angularai init`. No key: the missing variable is named, and the value is never printed. The API is down, or the reply is not the JSON object AngularAI asked for: nothing new is remembered. The input is over the budget: it is not sent. A lock phrase or a secret in the reply: you see `Value lock held this reply.` The held text is not stored, and a held reply does not run a tool. A trace the model was not shown is not superseded. When the step budget is spent, the last reply is printed and the cortex keeps that pass.
+No cortex yet: `angularai init`. No key: the missing variable is named, and the value is never printed. The API is down, or the reply is not the JSON object AngularAI asked for: nothing new is remembered. The input is over the budget: it is not sent. A lock phrase or a secret in the reply or its tool: you see `Value lock held this reply.` The held text is not stored, and a held reply does not run a tool. A trace the model was not shown is not superseded. When the step budget is spent, the last reply is printed and the cortex keeps that pass.
 
 </details>
 

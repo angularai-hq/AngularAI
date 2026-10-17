@@ -1,3 +1,5 @@
+import re
+import unicodedata
 from dataclasses import dataclass, field
 
 from angularai.errors import LockBypass
@@ -19,13 +21,18 @@ class ValueLock:
     def __init__(self) -> None:
         self.seal = object()
 
-    def judge(self, reply: str, forbid: tuple[str, ...], secrets: tuple[str, ...]) -> Verdict:
-        lowered = reply.lower()
-        for phrase in forbid:
-            if phrase.lower() in lowered:
+    def judge(
+        self,
+        reply: str,
+        forbid: tuple[str, ...],
+        secrets: tuple[str, ...],
+        also: tuple[str, ...] = (),
+    ) -> Verdict:
+        """Judge the reply, and every text in also. Only the reply is released."""
+
+        for text in (reply, *also):
+            if _forbidden(text, forbid) or _secret(text, secrets):
                 return Verdict(False, HELD, self.seal)
-        if contains_secret(reply, secrets):
-            return Verdict(False, HELD, self.seal)
         return Verdict(True, reply, self.seal)
 
 
@@ -39,3 +46,25 @@ class Thinker:
         if not isinstance(verdict, Verdict) or verdict.seal is not self._lock.seal:
             raise LockBypass("L4 did not judge this reply. Nothing leaves the cortex.")
         return verdict.text
+
+
+def normalize(text: str) -> str:
+    """NFKC, no format characters (zero-width and kin), one space for any run."""
+
+    folded = unicodedata.normalize("NFKC", text)
+    visible = "".join(ch for ch in folded if unicodedata.category(ch) != "Cf")
+    return _SPACE.sub(" ", visible).strip()
+
+
+_SPACE = re.compile(r"\s+")
+
+
+def _forbidden(text: str, forbid: tuple[str, ...]) -> bool:
+    if not forbid:
+        return False
+    seen = normalize(text).casefold()
+    return any(normalize(phrase).casefold() in seen for phrase in forbid if phrase.strip())
+
+
+def _secret(text: str, secrets: tuple[str, ...]) -> bool:
+    return contains_secret(text, secrets) or contains_secret(normalize(text), secrets)

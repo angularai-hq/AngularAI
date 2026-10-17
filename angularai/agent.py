@@ -57,6 +57,7 @@ def run_agent(
     if not directory.is_dir():
         raise InputRejected("The agent root is not a directory.")
     last: str | None = None
+    done: str | None = None
     reply = ""
     for index in range(1, steps + 1):
         result = pass_turn(
@@ -65,6 +66,7 @@ def run_agent(
             _step_input(task, index, steps, last),
             secrets,
             AGENT_SYSTEM,
+            _step_record(task, index, steps, done),
         )
         reply = result.reply
         if result.held or result.act is None:
@@ -72,7 +74,8 @@ def run_agent(
             return AgentResult(reply, index, stop)
         if on_step is not None:
             on_step(f"{index}  {_detail(result.act)}")
-        last = f"{_detail(result.act)}\n{execute(directory, result.act, secrets, allow_run)}"
+        done = _detail(result.act)
+        last = f"{done}\n{execute(directory, result.act, secrets, allow_run)}"
     return AgentResult(reply, steps, "budget")
 
 
@@ -82,6 +85,15 @@ def _step_input(task: str, index: int, steps: int, last: str | None) -> str:
         return body
     clipped = last if len(last) <= _LAST_CHARS else last[: _LAST_CHARS - 3] + "..."
     return f"{body}\n\nSTEP {index} of {steps}\n{clipped}"
+
+
+def _step_record(task: str, index: int, steps: int, done: str | None) -> str:
+    """What the log keeps of a step: the task and the last tool. Never its output."""
+
+    body = f"TASK\n{task.strip()}"
+    if done is None:
+        return body
+    return f"{body}\n\nSTEP {index} of {steps}\n{done}"
 
 
 def _detail(action: Action) -> str:
