@@ -71,6 +71,26 @@ a { color: inherit; }
   color: #fff;
 }
 
+.nav .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.22rem 0.72rem 0.22rem 0.22rem;
+}
+
+.nav .brand img {
+  width: 1.7rem;
+  height: 1.7rem;
+  display: block;
+}
+
+.mark {
+  width: min(15rem, 68vw);
+  height: auto;
+  display: block;
+  margin: 0 auto 1.5rem;
+}
+
 .sky {
   position: relative;
   min-height: 92vh;

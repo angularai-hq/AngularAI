@@ -1,5 +1,7 @@
 # AngularAI
 
+![AngularAI](docs/logo.png)
+
 A cortex in front of the model you already call.
 
 The call ends. The file does not. AngularAI sits in front of an API you already wire, and each pass sends only what fits a fixed budget. What the agent learns stays on disk. The vendor’s weights do not change.
@@ -9,7 +11,7 @@ The layer names come from Thameleon's CLASP model. The hardware stays hardware.
 ## Install
 
 ```bash
-uv tool install git+https://github.com/baiehclaca/AngularAI.git
+uv tool install git+https://github.com/angularai-hq/AngularAI.git
 angularai init
 ```
 
@@ -28,7 +30,7 @@ angularai wire compatible --model <model> --base-url http://127.0.0.1:11434/v1
 
 From a checkout, `uv sync` then `uv run angularai` does the same. `uv tool install --editable .` puts the command on your PATH.
 
-The site is [baiehclaca.github.io/AngularAI](https://baiehclaca.github.io/AngularAI/). The paper is `docs/angularai.pdf`.
+The site is [angularai-hq.github.io/AngularAI](https://angularai-hq.github.io/AngularAI/). The paper is `docs/angularai.pdf`.
 
 ## Speak
 

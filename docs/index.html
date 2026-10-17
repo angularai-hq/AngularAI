@@ -9,15 +9,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="site.css">
+  <link rel="icon" href="logo.png" type="image/png">
+  <meta property="og:image" content="https://angularai-hq.github.io/AngularAI/logo.png">
 </head>
 <body id="top">
   <a class="skip" href="#main">Skip to content</a>
   <header class="nav">
-    <a href="#top">AngularAI</a>
+    <a class="brand" href="#top"><img src="logo.png" alt="">AngularAI</a>
     <nav aria-label="Page">
       <a href="#membrane">Membrane</a>
       <a href="angularai.pdf">Paper</a>
-      <a href="https://github.com/baiehclaca/AngularAI">GitHub</a>
+      <a href="https://github.com/angularai-hq/AngularAI">GitHub</a>
     </nav>
     <a class="go" href="#install">Install</a>
   </header>
@@ -26,6 +28,7 @@
     <section class="sky">
       <p class="edge">angularai 0.1.0 · a cortex on disk · 2026</p>
       <div class="hero">
+        <img class="mark" src="logo.png" alt="AngularAI">
         <div class="term">
           <header>angularai 0.1.0</header>
           <div class="body">
@@ -146,7 +149,7 @@
           <button type="button" id="copy">Copy</button>
         </header>
         <div class="body">
-          <p id="cmd">uv tool install git+https://github.com/baiehclaca/AngularAI.git<br>angularai</p>
+          <p id="cmd">uv tool install git+https://github.com/angularai-hq/AngularAI.git<br>angularai</p>
         </div>
       </article>
       <p class="label after">Then wire the API you already have. The key stays in the environment.</p>
@@ -181,7 +184,7 @@
     <p>AngularAI · Teodor Walter Vido · 2026</p>
     <nav aria-label="Footer">
       <a href="angularai.pdf">Paper</a>
-      <a href="https://github.com/baiehclaca/AngularAI">GitHub</a>
+      <a href="https://github.com/angularai-hq/AngularAI">GitHub</a>
     </nav>
   </footer>
   <script>
@@ -192,7 +195,7 @@
     });
     const copy = document.getElementById("copy");
     copy.addEventListener("click", async () => {
-      const text = "uv tool install git+https://github.com/baiehclaca/AngularAI.git\nangularai\n";
+      const text = "uv tool install git+https://github.com/angularai-hq/AngularAI.git\nangularai\n";
       try {
         await navigator.clipboard.writeText(text);
         copy.textContent = "Copied";
