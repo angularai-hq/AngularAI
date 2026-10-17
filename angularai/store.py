@@ -2,8 +2,8 @@ import json
 import os
 from pathlib import Path
 
-from clasp.errors import ConfigError, CortexExists, LogDamaged, NoCortex
-from clasp.models import (
+from angularai.errors import ConfigError, CortexExists, LogDamaged, NoCortex
+from angularai.models import (
     Config,
     CortexView,
     Episode,
@@ -13,7 +13,7 @@ from clasp.models import (
     Trace,
     TraceState,
 )
-from clasp.urls import validate_base_url
+from angularai.urls import validate_base_url
 
 _CONFIG_FIELDS = frozenset(
     {
@@ -39,7 +39,7 @@ def init_cortex(root: Path) -> None:
             raise CortexExists(f"A cortex already lives at {root}.")
     else:
         root.mkdir(parents=True, mode=0o700)
-    if root.parent.name == ".clasp":
+    if root.parent.name == ".angularai":
         root.parent.chmod(0o700)
     root.chmod(0o700)
     write_config(root / "cortex.json", default_config())
@@ -50,7 +50,7 @@ def init_cortex(root: Path) -> None:
 
 def open_store(root: Path) -> "Store":
     if not (root / "cortex.json").is_file():
-        raise NoCortex(f"No cortex at {root}. Run clasp init.")
+        raise NoCortex(f"No cortex at {root}. Run angularai init.")
     return Store(root)
 
 

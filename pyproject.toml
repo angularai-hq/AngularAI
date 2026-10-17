@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "clasp"
+name = "angularai"
 version = "0.1.0"
 description = "A cortex in front of a language model. The workspace is bounded. The memory is not."
 readme = "README.md"
@@ -11,53 +11,57 @@ requires-python = ">=3.12"
 license = "MIT"
 authors = [{ name = "Teodor Walter Vido" }]
 keywords = ["agents", "llm", "cli", "memory", "cortex"]
-dependencies = []
+dependencies = [
+    "textual>=2.1",
+]
 
 [project.optional-dependencies]
 dev = [
     "mypy>=1.13",
     "pytest>=8.3",
     "pytest-cov>=5",
+    "reportlab>=4.2",
     "ruff>=0.8",
 ]
 
 [project.scripts]
-clasp = "clasp.cli:main"
+angularai = "angularai.cli:main"
 
 [dependency-groups]
 dev = [
     "mypy>=1.13",
     "pytest>=8.3",
     "pytest-cov>=5",
+    "reportlab>=4.2",
     "ruff>=0.8",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["clasp"]
+packages = ["angularai"]
 
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["clasp", "tests"]
+src = ["angularai", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
 ignore = ["N818"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["clasp", "tests"]
+known-first-party = ["angularai", "tests"]
 
 [tool.mypy]
 strict = true
 python_version = "3.12"
-files = ["clasp"]
+files = ["angularai"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
 [tool.coverage.run]
 branch = true
-source = ["clasp"]
+source = ["angularai"]
 
 [tool.coverage.report]
 fail_under = 80

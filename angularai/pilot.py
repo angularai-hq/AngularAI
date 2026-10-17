@@ -1,13 +1,21 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from clasp.assemble import assemble
-from clasp.errors import InputRejected, SubstrateError
-from clasp.lock import Thinker, ValueLock
-from clasp.models import Integration, Outcome, PassRecord, Trace, TraceDraft, TurnResult, Workspace
-from clasp.secrets import contains_secret, redact
-from clasp.store import Store
-from clasp.substrate import Substrate
+from angularai.assemble import assemble
+from angularai.errors import InputRejected, SubstrateError
+from angularai.lock import Thinker, ValueLock
+from angularai.models import (
+    Integration,
+    Outcome,
+    PassRecord,
+    Trace,
+    TraceDraft,
+    TurnResult,
+    Workspace,
+)
+from angularai.secrets import contains_secret, redact
+from angularai.store import Store
+from angularai.substrate import Substrate
 
 _MAX_INPUT_CHARS = 20000
 

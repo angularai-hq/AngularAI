@@ -5,26 +5,20 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Literal
 
-from clasp import __version__
-from clasp.configure import add_lock, remove_lock, set_budget, wire
-from clasp.errors import ClaspError
-from clasp.models import SubstrateKind
-from clasp.pilot import pass_turn
-from clasp.present import format_banner, format_locks, format_recall, format_status, format_traces
-from clasp.store import Store, init_cortex, open_store
-from clasp.substrate import build_substrate, key_env, secret_values
+from angularai import __version__
+from angularai.configure import add_lock, remove_lock, set_budget, wire
+from angularai.errors import AngularAIError
+from angularai.models import SubstrateKind
+from angularai.pilot import pass_turn
+from angularai.present import format_banner, format_locks, format_recall, format_traces
+from angularai.session import cortex_status, session_command
+from angularai.store import Store, init_cortex, open_store
+from angularai.substrate import build_substrate, key_env, secret_values
+from angularai.tui import run_tui
 
 _DESCRIPTION = (
     "A cortex in front of a language model. "
     "The model sees a bounded workspace. What the agent knows stays on disk."
-)
-_REPL_HELP = "\n".join(
-    (
-        "/cortex   list traces",
-        "/recall   find traces",
-        "/status   last pass and budget",
-        "/quit     leave",
-    )
 )
 ReplAction = Literal["quit", "continue"]
 
@@ -35,7 +29,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         cortex, rest = _extract_cortex(raw)
         args = _parser().parse_args(rest)
         return _dispatch(args, cortex)
-    except ClaspError as exc:
+    except AngularAIError as exc:
         print(exc, file=sys.stderr)
         return 1
     except KeyboardInterrupt:
@@ -47,7 +41,7 @@ def _dispatch(args: argparse.Namespace, cortex: Path | None) -> int:
     root = _root(cortex)
     command = args.command
     if command is None:
-        return _repl(open_store(root))
+        return _open_session(open_store(root))
     if command == "init":
         return _init(root)
     if command == "wire":
@@ -74,7 +68,7 @@ def _dispatch(args: argparse.Namespace, cortex: Path | None) -> int:
 def _init(root: Path) -> int:
     init_cortex(root)
     print(f"Cortex is at {root}")
-    print("Wire a model with: clasp wire openai --model <name>")
+    print("Wire a model with: angularai wire openai --model <name>")
     return 0
 
 
@@ -127,6 +121,12 @@ def _lock(root: Path, args: argparse.Namespace) -> int:
     return 2
 
 
+def _open_session(store: Store) -> int:
+    if sys.stdin.isatty() and sys.stdout.isatty():
+        return run_tui(store, _speak)
+    return _repl(store)
+
+
 def _repl(store: Store) -> int:
     print(format_banner(store.config(), store.view()))
     while True:
@@ -137,7 +137,7 @@ def _repl(store: Store) -> int:
             return 0
         try:
             action, output = repl_line(store, line)
-        except ClaspError as exc:
+        except AngularAIError as exc:
             print(exc, file=sys.stderr)
             continue
         if output:
@@ -147,26 +147,15 @@ def _repl(store: Store) -> int:
 
 
 def repl_line(store: Store, line: str) -> tuple[ReplAction, str | None]:
-    stripped = line.strip()
-    if not stripped:
-        return "continue", None
-    if stripped in {"/quit", "/exit"}:
+    action, payload = session_command(store, line, _status(store))
+    if action == "speak":
+        if payload is None:
+            return "continue", None
+        print("integrating", file=sys.stderr)
+        return "continue", _speak(store, payload)
+    if action == "quit":
         return "quit", None
-    if stripped == "/help":
-        return "continue", _REPL_HELP
-    if stripped == "/cortex":
-        return "continue", format_traces(store.view())
-    if stripped == "/status":
-        return "continue", _status(store)
-    if stripped.startswith("/recall"):
-        query = stripped.removeprefix("/recall").strip()
-        if not query:
-            return "continue", "/recall needs a query."
-        return "continue", format_recall(store.view(), query)
-    if stripped.startswith("/"):
-        return "continue", "Unknown command. /help lists them."
-    print("integrating", file=sys.stderr)
-    return "continue", _speak(store, stripped)
+    return "continue", payload
 
 
 def _speak(store: Store, text: str) -> str:
@@ -176,26 +165,16 @@ def _speak(store: Store, text: str) -> str:
 
 
 def _status(store: Store) -> str:
-    config = store.config()
-    key_name = key_env(config.substrate) if config.substrate is not None else None
-    key_set = bool(key_name and os.environ.get(key_name, "").strip())
-    return format_status(
-        root=store.root,
-        config=config,
-        view=store.view(),
-        last=store.last_pass(),
-        key_name=key_name,
-        key_set=key_set,
-    )
+    return cortex_status(store, os.environ)
 
 
 def _root(cortex: Path | None) -> Path:
     if cortex is not None:
         return cortex.expanduser()
-    env = os.environ.get("CLASP_CORTEX")
+    env = os.environ.get("ANGULARAI_CORTEX")
     if env:
         return Path(env).expanduser()
-    return Path.home() / ".clasp" / "default"
+    return Path.home() / ".angularai" / "default"
 
 
 def _kind(value: str) -> SubstrateKind:
@@ -205,11 +184,11 @@ def _kind(value: str) -> SubstrateKind:
         return "anthropic"
     if value == "compatible":
         return "compatible"
-    raise ClaspError(f"Unknown substrate {value}.")
+    raise AngularAIError(f"Unknown substrate {value}.")
 
 
 def _extract_cortex(argv: list[str]) -> tuple[Path | None, list[str]]:
-    pre = argparse.ArgumentParser(prog="clasp", add_help=False)
+    pre = argparse.ArgumentParser(prog="angularai", add_help=False)
     pre.add_argument("--cortex", type=Path, default=None)
     known, rest = pre.parse_known_args(argv)
     cortex = known.cortex
@@ -220,11 +199,15 @@ def _extract_cortex(argv: list[str]) -> tuple[Path | None, list[str]]:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="clasp",
+        prog="angularai",
         description=_DESCRIPTION,
-        epilog="--cortex PATH can be placed anywhere. The default cortex is ~/.clasp/default.",
+        epilog=(
+            "With no command, a terminal opens the session. "
+            "angularai say is one turn, and the reply is the only thing it prints. "
+            "--cortex PATH can be placed anywhere. The default cortex is ~/.angularai/default."
+        ),
     )
-    parser.add_argument("--version", action="version", version=f"clasp {__version__}")
+    parser.add_argument("--version", action="version", version=f"angularai {__version__}")
     sub = parser.add_subparsers(dest="command")
 
     sub.add_parser("init", help="Create a cortex on disk.")

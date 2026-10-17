@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
-from clasp.errors import LockBypass
-from clasp.secrets import contains_secret
+from angularai.errors import LockBypass
+from angularai.secrets import contains_secret
 
 HELD = "Value lock held this reply."
 

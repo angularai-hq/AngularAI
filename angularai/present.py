@@ -1,14 +1,14 @@
 from pathlib import Path
 
-from clasp.attention import score
-from clasp.models import Config, CortexView, PassRecord, Trace
+from angularai.attention import score
+from angularai.models import Config, CortexView, PassRecord, Trace
 
 
 def format_banner(config: Config, view: CortexView) -> str:
     kind = config.substrate or "unwired"
     model = config.model or "no model"
     return (
-        f"clasp  {kind}  {model}  budget {config.workspace_budget}  "
+        f"angularai  {kind}  {model}  budget {config.workspace_budget}  "
         f"traces {len(view.current_traces())}"
     )
 
@@ -41,7 +41,7 @@ def format_locks(forbid: tuple[str, ...]) -> str:
     if not forbid:
         return (
             "No locks yet. A lock is a phrase the reply is not allowed to contain.\n"
-            'clasp lock add "the phrase"'
+            'angularai lock add "the phrase"'
         )
     return "\n".join(forbid)
 

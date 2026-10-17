@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from clasp.cli import main, repl_line
-from clasp.store import init_cortex, open_store
+from angularai.cli import main, repl_line
+from angularai.store import init_cortex, open_store
 
 KEY = "sk-test-secret-value-xyz"
 
@@ -39,7 +39,7 @@ def test_empty_cortex_and_recall(tmp_path: Path, capsys) -> None:
     capsys.readouterr()
     assert main(["--cortex", str(tmp_path), "cortex"]) == 0
     assert "No traces yet" in capsys.readouterr().out
-    assert main(["--cortex", str(tmp_path), "recall", "Nitra"]) == 0
+    assert main(["--cortex", str(tmp_path), "recall", "notebook"]) == 0
     assert "Nothing in the cortex" in capsys.readouterr().out
 
 

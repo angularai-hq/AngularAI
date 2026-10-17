@@ -1,35 +1,35 @@
 """Errors an operator can read. None of them include secrets."""
 
 
-class ClaspError(Exception):
+class AngularAIError(Exception):
     """Safe to print."""
 
 
-class NoCortex(ClaspError):
+class NoCortex(AngularAIError):
     """The path is not a cortex."""
 
 
-class CortexExists(ClaspError):
+class CortexExists(AngularAIError):
     """Refusing to overwrite a cortex."""
 
 
-class ConfigError(ClaspError):
+class ConfigError(AngularAIError):
     """The cortex file on disk is not a valid config."""
 
 
-class LogDamaged(ClaspError):
+class LogDamaged(AngularAIError):
     """A line in the cortex log cannot be read."""
 
 
-class InputRejected(ClaspError):
+class InputRejected(AngularAIError):
     """The input never entered the cortex."""
 
 
-class InputDoesNotFit(ClaspError):
+class InputDoesNotFit(AngularAIError):
     """The fixed part of the workspace is already over budget."""
 
 
-class SubstrateError(ClaspError):
+class SubstrateError(AngularAIError):
     """The model API failed. Traces from this pass were not written."""
 
 
@@ -49,5 +49,5 @@ class SubstrateUnreadable(SubstrateError):
     """The API answered, but not with a cortex reply."""
 
 
-class LockBypass(ClaspError):
+class LockBypass(AngularAIError):
     """A reply tried to leave without an L4 verdict."""

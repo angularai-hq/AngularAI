@@ -2,18 +2,18 @@ import json
 from collections.abc import Callable, Mapping
 from typing import Protocol, assert_never
 
-from clasp.budget import estimate_tokens
-from clasp.errors import (
+from angularai.budget import estimate_tokens
+from angularai.errors import (
     InputRejected,
     KeyMissing,
     KeyRejected,
     SubstrateUnavailable,
     SubstrateUnreadable,
 )
-from clasp.http import http_json
-from clasp.models import Config, Integration, SubstrateKind, Workspace
-from clasp.parse import parse_integration
-from clasp.secrets import redact
+from angularai.http import http_json
+from angularai.models import Config, Integration, SubstrateKind, Workspace
+from angularai.parse import parse_integration
+from angularai.secrets import redact
 
 Transport = Callable[[str, dict[str, str], Mapping[str, object], float], tuple[int, bytes]]
 _PARSE_NUDGE = "\n\nReturn only the JSON object."
@@ -62,7 +62,7 @@ class OpenAICompatible:
     def _complete(self, workspace: Workspace, json_mode: bool, user: str) -> str:
         payload: dict[str, object] = {
             "model": self._model,
-            self._completion_field: 1024,
+            self._completion_field: 2048,
             "messages": [
                 {"role": "system", "content": workspace.system},
                 {"role": "user", "content": user},
@@ -74,7 +74,7 @@ class OpenAICompatible:
         headers = {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
-            "User-Agent": "clasp/0.1.0",
+            "User-Agent": "angularai/0.1.0",
         }
         return openai_text(_post(self._transport, url, headers, payload, self._api_key))
 
@@ -107,7 +107,7 @@ class Anthropic:
     def _complete(self, system: str, user: str) -> str:
         payload: dict[str, object] = {
             "model": self._model,
-            "max_tokens": 1024,
+            "max_tokens": 2048,
             "system": system,
             "messages": [{"role": "user", "content": user}],
         }
@@ -116,7 +116,7 @@ class Anthropic:
             "x-api-key": self._api_key,
             "anthropic-version": "2023-06-01",
             "content-type": "application/json",
-            "User-Agent": "clasp/0.1.0",
+            "User-Agent": "angularai/0.1.0",
         }
         return anthropic_text(_post(self._transport, url, headers, payload, self._api_key))
 
@@ -124,7 +124,7 @@ class Anthropic:
 def build_substrate(config: Config, environ: Mapping[str, str]) -> Substrate:
     if config.substrate is None or config.model is None:
         raise InputRejected(
-            "This cortex has no model. Wire one with: clasp wire openai --model <name>"
+            "This cortex has no model. Wire one with: angularai wire openai --model <name>"
         )
     kind = config.substrate
     env_name = key_env(kind)
@@ -160,7 +160,7 @@ def build_substrate(config: Config, environ: Mapping[str, str]) -> Substrate:
 
 def secret_values(environ: Mapping[str, str]) -> tuple[str, ...]:
     found: list[str] = []
-    for name in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "CLASP_API_KEY"):
+    for name in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ANGULARAI_API_KEY"):
         value = environ.get(name, "").strip()
         if len(value) >= 8:
             found.append(value)
@@ -173,7 +173,7 @@ def key_env(kind: SubstrateKind) -> str:
     if kind == "anthropic":
         return "ANTHROPIC_API_KEY"
     if kind == "compatible":
-        return "CLASP_API_KEY"
+        return "ANGULARAI_API_KEY"
     assert_never(kind)
 
 

@@ -3,7 +3,7 @@ from collections.abc import Mapping
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from clasp.errors import SubstrateUnavailable
+from angularai.errors import SubstrateUnavailable
 
 TIMEOUT_SECONDS = 90.0
 

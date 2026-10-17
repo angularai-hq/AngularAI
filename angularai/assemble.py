@@ -1,19 +1,21 @@
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
-from clasp.attention import score
-from clasp.budget import estimate_tokens
-from clasp.errors import InputDoesNotFit
-from clasp.models import Config, CortexView, Episode, Trace, Workspace
+from angularai.attention import score
+from angularai.budget import estimate_tokens
+from angularai.errors import InputDoesNotFit
+from angularai.models import Config, CortexView, Episode, Trace, Workspace
 
 SYSTEM = (
-    "You are Clasp. This workspace is the only context for this pass. "
+    "You are AngularAI. This workspace is the only context for this pass. "
     "TRACES are what you know. RECENT is the part of the conversation that still fits. "
     "Answer INPUT. "
-    "remember holds durable facts the next pass would lose, in plain words, one fact each. "
+    "remember holds every durable fact the next pass would lose, one fact each, "
+    "including identifiers, replacements, phrases, and constraints. "
     "supersede holds trace ids from TRACES that this input contradicts. "
-    "Do not remember questions, guesses, or secrets. "
+    "Do not remember questions, guesses, API keys, or private keys. "
     "Reply with one JSON object and nothing else: "
     '{"reply":"...","remember":[{"text":"...","wavelengths":["slug"]}],"supersede":["id"]}'
 )
@@ -49,7 +51,7 @@ def assemble(view: CortexView, user_text: str, config: Config) -> Workspace:
     if used([], []) > config.workspace_budget:
         raise InputDoesNotFit(
             f"That input does not fit the workspace budget of {config.workspace_budget}. "
-            "Shorten it, or raise the budget with clasp budget."
+            "Shorten it, or raise the budget with angularai budget."
         )
 
     ranked = sorted(_candidates(view, text), key=lambda item: (item.rank, item.at), reverse=True)
@@ -69,7 +71,7 @@ def assemble(view: CortexView, user_text: str, config: Config) -> Workspace:
                 chosen_episodes.append(candidate)
 
     chosen_episodes = _with_continuity(
-        view, chosen_episodes, chosen_traces, used, config.workspace_budget
+        view, chosen_episodes, chosen_traces, used, config.workspace_budget, text
     )
     episode_lines = _lines(sorted(chosen_episodes, key=lambda item: item.at))
     trace_lines = _lines(chosen_traces)
@@ -96,13 +98,14 @@ def _with_continuity(
     chosen_traces: list[_Candidate],
     used: Callable[[list[str], list[str]], int],
     budget: int,
+    query: str,
 ) -> list[_Candidate]:
     if not view.episodes:
         return chosen_episodes
     newest = max(view.episodes, key=lambda episode: episode.at)
     if any(item.at == newest.at for item in chosen_episodes):
         return chosen_episodes
-    candidate = _episode_candidate(newest, 0.0)
+    candidate = _episode_candidate(newest, 0.0, query)
     trial = [*chosen_episodes, candidate]
     if used(_lines(chosen_traces), _lines(trial)) <= budget:
         return trial
@@ -117,12 +120,14 @@ def _candidates(view: CortexView, query: str) -> tuple[_Candidate, ...]:
             _Candidate("trace", score(query, document), trace.at, _trace_line(trace), trace.id)
         )
     for episode in view.episodes:
-        items.append(_episode_candidate(episode, score(query, _episode_document(episode))))
+        items.append(
+            _episode_candidate(episode, score(query, _episode_document(episode)), query)
+        )
     return tuple(items)
 
 
-def _episode_candidate(episode: Episode, rank: float) -> _Candidate:
-    return _Candidate("episode", rank, episode.at, _episode_line(episode), None)
+def _episode_candidate(episode: Episode, rank: float, query: str) -> _Candidate:
+    return _Candidate("episode", rank, episode.at, _episode_line(episode, query), None)
 
 
 def _episode_document(episode: Episode) -> str:
@@ -144,18 +149,67 @@ def _lock_block(forbid: tuple[str, ...]) -> str:
 
 def _trace_line(trace: Trace) -> str:
     waves = ",".join(trace.wavelengths) if trace.wavelengths else "-"
-    return f"{trace.id}  {waves}  {_one_line(trace.text, 240)}\n"
+    return f"{trace.id}  {waves}  {_clip(trace.text, 240)}\n"
 
 
-def _episode_line(episode: Episode) -> str:
-    you = f"you  {_one_line(episode.user, 400)}\n"
+def _episode_line(episode: Episode, query: str) -> str:
+    you = f"you  {focus(episode.user, query, 700)}\n"
     if episode.reply is None:
         return you
-    return you + f"clasp  {_one_line(episode.reply, 400)}\n"
+    return you + f"angularai  {focus(episode.reply, query, 400)}\n"
 
 
-def _one_line(text: str, limit: int) -> str:
+def focus(text: str, query: str, limit: int) -> str:
+    """The slice of a long episode that overlaps the question."""
+
     flat = " ".join(text.split())
     if len(flat) <= limit:
         return flat
-    return flat[: limit - 3] + "..."
+    sentences = [part for part in re.split(r"(?<=[.!?])\s+", flat) if part]
+    if not sentences or not any(score(query, sentence) > 0 for sentence in sentences):
+        return _clip(flat, limit)
+    chosen: list[int] = []
+    used = 0
+    ranked = sorted(
+        range(len(sentences)),
+        key=lambda index: (score(query, sentences[index]), -index),
+        reverse=True,
+    )
+    for index in ranked:
+        if score(query, sentences[index]) <= 0:
+            break
+        piece = sentences[index]
+        extra = len(piece) + (1 if used else 0)
+        if used + extra > limit:
+            if not chosen:
+                return _window(piece, query, limit)
+            continue
+        chosen.append(index)
+        used += extra
+    chosen.sort()
+    return " ".join(sentences[index] for index in chosen)
+
+
+def _window(text: str, query: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    best = text[:limit]
+    best_score = score(query, best)
+    step = max(40, limit // 4)
+    start = 0
+    while start < len(text):
+        piece = text[start : start + limit]
+        rank = score(query, piece)
+        if rank > best_score:
+            best = piece
+            best_score = rank
+        if start + limit >= len(text):
+            break
+        start += step
+    return _clip(best.strip(), limit)
+
+
+def _clip(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    return text[: limit - 3] + "..."

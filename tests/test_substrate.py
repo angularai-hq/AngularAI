@@ -5,12 +5,12 @@ from urllib.request import Request
 
 import pytest
 
-from clasp.errors import KeyRejected, SubstrateUnavailable, SubstrateUnreadable
-from clasp.http import _NoRedirect
-from clasp.models import Workspace
-from clasp.pilot import pass_turn
-from clasp.store import init_cortex, open_store
-from clasp.substrate import Anthropic, OpenAICompatible, error_for_status
+from angularai.errors import KeyRejected, SubstrateUnavailable, SubstrateUnreadable
+from angularai.http import _NoRedirect
+from angularai.models import Workspace
+from angularai.pilot import pass_turn
+from angularai.store import init_cortex, open_store
+from angularai.substrate import Anthropic, OpenAICompatible, error_for_status
 
 KEY = "sk-test-secret-value"
 
@@ -65,7 +65,7 @@ def test_openai_sends_only_the_workspace() -> None:
     assert isinstance(messages, list)
     assert messages[0]["content"] == "SYS"
     assert messages[1]["content"] == "USER"
-    assert sent["max_completion_tokens"] == 1024
+    assert sent["max_completion_tokens"] == 2048
     assert sent["response_format"] == {"type": "json_object"}
     assert KEY not in json.dumps(sent)
 

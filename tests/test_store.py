@@ -3,10 +3,10 @@ from pathlib import Path
 
 import pytest
 
-from clasp.errors import ConfigError, CortexExists, LogDamaged
-from clasp.models import Integration, Trace, TraceDraft
-from clasp.pilot import pass_turn
-from clasp.store import init_cortex, open_store
+from angularai.errors import ConfigError, CortexExists, LogDamaged
+from angularai.models import Integration, Trace, TraceDraft
+from angularai.pilot import pass_turn
+from angularai.store import init_cortex, open_store
 from tests.scripted import Scripted
 
 
@@ -42,19 +42,21 @@ def test_superseded_text_stays_in_the_log(tmp_path: Path) -> None:
     store = open_store(tmp_path)
     pass_turn(
         store,
-        Scripted(Integration("Noted.", (TraceDraft("Lives in Nitra.", ("place",)),), ())),
-        "I live in Nitra.",
+        Scripted(Integration("Noted.", (TraceDraft("The notebook is blue.", ("place",)),), ())),
+        "I have a blue notebook.",
     )
     trace = store.view().current_traces()[0]
     pass_turn(
         store,
-        Scripted(Integration("Noted.", (TraceDraft("Lives in Vienna.", ("place",)),), (trace.id,))),
-        "I live in Vienna.",
+        Scripted(
+            Integration("Noted.", (TraceDraft("The notebook is red.", ("object",)),), (trace.id,))
+        ),
+        "The notebook is red.",
     )
     view = store.view()
-    old = next(item for item in view.traces if item.text == "Lives in Nitra.")
+    old = next(item for item in view.traces if item.text == "The notebook is blue.")
     assert old.state == "superseded"
     assert isinstance(old, Trace)
     current = view.current_traces()
-    assert [item.text for item in current] == ["Lives in Vienna."]
-    assert "Lives in Nitra." in (tmp_path / "passes.jsonl").read_text(encoding="utf-8")
+    assert [item.text for item in current] == ["The notebook is red."]
+    assert "The notebook is blue." in (tmp_path / "passes.jsonl").read_text(encoding="utf-8")

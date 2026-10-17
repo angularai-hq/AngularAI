@@ -1,0 +1,458 @@
+%PDF-1.4
+%“Œ‹ž ReportLab Generated PDF document (opensource)
+1 0 obj
+<<
+/F1 2 0 R /F2 3 0 R /F3 4 0 R
+>>
+endobj
+2 0 obj
+<<
+/BaseFont /Helvetica /Encoding /WinAnsiEncoding /Name /F1 /Subtype /Type1 /Type /Font
+>>
+endobj
+3 0 obj
+<<
+/BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding /Name /F2 /Subtype /Type1 /Type /Font
+>>
+endobj
+4 0 obj
+<<
+/BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding /Name /F3 /Subtype /Type1 /Type /Font
+>>
+endobj
+5 0 obj
+<<
+/Contents 10 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 9 0 R /Resources <<
+/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>> /Rotate 0 /Trans <<
+
+>> 
+  /Type /Page
+>>
+endobj
+6 0 obj
+<<
+/Contents 11 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 9 0 R /Resources <<
+/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>> /Rotate 0 /Trans <<
+
+>> 
+  /Type /Page
+>>
+endobj
+7 0 obj
+<<
+/PageMode /UseNone /Pages 9 0 R /Type /Catalog
+>>
+endobj
+8 0 obj
+<<
+/Author (Teodor Walter Vido) /CreationDate (D:20261017194004+02'00') /Creator (\(unspecified\)) /Keywords () /ModDate (D:20261017194004+02'00') /Producer (ReportLab PDF Library - \(opensource\)) 
+  /Subject (\(unspecified\)) /Title (AngularAI) /Trapped /False
+>>
+endobj
+9 0 obj
+<<
+/Count 2 /Kids [ 5 0 R 6 0 R ] /Type /Pages
+>>
+endobj
+10 0 obj
+<<
+/Length 6062
+>>
+stream
+1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
+q
+0 0 0 RG
+.4 w
+n 64 40 m 531.2756 40 l S
+.32 .32 .32 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 64 26 Tm (Teodor Walter Vido) Tj T* ET
+BT 1 0 0 1 526.8276 26 Tm (1) Tj T* ET
+Q
+q
+1 0 0 1 70 699.8898 cm
+0 0 0 rg
+BT /F2 14 Tf 16.8 TL ET
+BT 1 0 0 1 0 48 Tm (A) Tj T* ET
+BT 1 0 0 1 12.308 48 Tm (N) Tj T* ET
+BT 1 0 0 1 24.616 48 Tm (G) Tj T* ET
+BT 1 0 0 1 37.708 48 Tm (U) Tj T* ET
+BT 1 0 0 1 50.016 48 Tm (L) Tj T* ET
+BT 1 0 0 1 60.77 48 Tm (A) Tj T* ET
+BT 1 0 0 1 73.078 48 Tm (R) Tj T* ET
+BT 1 0 0 1 85.386 48 Tm (A) Tj T* ET
+BT 1 0 0 1 97.694 48 Tm (I) Tj T* ET
+BT /F1 11 Tf 13.2 TL ET
+BT 1 0 0 1 0 28 Tm (A cortex in front of a language model) Tj T* ET
+.32 .32 .32 rg
+BT /F1 9 Tf 10.8 TL ET
+BT 1 0 0 1 0 8 Tm (Teodor Walter Vido) Tj T* ET
+BT 1 0 0 1 435.2596 8 Tm (2026) Tj T* ET
+0 0 0 RG
+.6 w
+n 0 0 m 455.2756 0 l S
+Q
+q
+1 0 0 1 70 683.8898 cm
+Q
+q
+1 0 0 1 70 638.8898 cm
+q
+0 0 0 rg
+BT 1 0 0 1 0 34.5 Tm /F1 10.5 Tf 15 TL .937706 Tw (A language model answers inside one call. When the call ends, that window is gone. AngularAI) Tj T* 0 Tw .035922 Tw (sits in front of the API you already use. The model still answers. What the agent has learned stays) Tj T* 0 Tw (in a file on the machine that asked.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 70 584.8898 cm
+q
+0 0 0 rg
+BT 1 0 0 1 0 34.5 Tm /F1 10.5 Tf 15 TL .894094 Tw (Each call is packed to a fixed budget. Attention ranks the file against the words of the question,) Tj T* 0 Tw .35258 Tw (and the workspace takes only what fits. The rest is not sent. It can return on a later pass, when a) Tj T* 0 Tw (question shares its words. The vendor's weights do not change. The plasticity is the cortex.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 70 443.8898 cm
+0 0 0 RG
+1 1 1 rg
+.8 w
+n 0 30 133.0919 86 re S
+0 0 0 rg
+BT /F2 8 Tf 9.6 TL ET
+BT 1 0 0 1 8 102 Tm (On disk) Tj T* ET
+.75 .75 .75 RG
+.4 w
+n 8 98 m 125.0919 98 l S
+0 0 0 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 8 82 Tm (passes.jsonl) Tj T* ET
+0 0 0 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 8 69 Tm (episodes) Tj T* ET
+0 0 0 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 8 56 Tm (traces) Tj T* ET
+0 0 0 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 8 43 Tm (superseded stay) Tj T* ET
+0 0 0 RG
+1 1 1 rg
+.8 w
+n 161.0919 30 133.0919 86 re S
+0 0 0 rg
+BT /F2 8 Tf 9.6 TL ET
+BT 1 0 0 1 169.0919 102 Tm (Workspace) Tj T* ET
+.75 .75 .75 RG
+.4 w
+n 169.0919 98 m 286.1837 98 l S
+0 0 0 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 169.0919 82 Tm (word overlap) Tj T* ET
+0 0 0 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 169.0919 69 Tm (what still fits) Tj T* ET
+0 0 0 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 169.0919 56 Tm (at most the budget) Tj T* ET
+0 0 0 RG
+1 1 1 rg
+.8 w
+n 322.1837 30 133.0919 86 re S
+0 0 0 rg
+BT /F2 8 Tf 9.6 TL ET
+BT 1 0 0 1 330.1837 102 Tm (The model) Tj T* ET
+.75 .75 .75 RG
+.4 w
+n 330.1837 98 m 447.2756 98 l S
+0 0 0 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 330.1837 82 Tm (one reply) Tj T* ET
+0 0 0 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 330.1837 69 Tm (traces to keep) Tj T* ET
+0 0 0 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 330.1837 56 Tm (or a hold) Tj T* ET
+0 0 0 RG
+0 0 0 rg
+.7 w
+n 136.0919 73 m 152.0919 73 l S
+n 158.0919 73 m 152.0919 76 l 152.0919 70 l h
+f*
+0 0 0 RG
+0 0 0 rg
+.7 w
+n 297.1837 73 m 313.1837 73 l S
+n 319.1837 73 m 313.1837 76 l 313.1837 70 l h
+f*
+0 0 0 rg
+BT /F1 7 Tf 8.4 TL ET
+BT 1 0 0 1 140.2844 81 Tm (rank) Tj T* ET
+0 0 0 rg
+BT /F1 7 Tf 8.4 TL ET
+BT 1 0 0 1 300.5957 81 Tm (send) Tj T* ET
+0 0 0 RG
+0 0 0 rg
+.9 w
+n 445.2756 30 m 445.2756 14 l S
+n 445.2756 14 m 17 14 l S
+n 10 14 m 17 17 l 17 11 l h
+f*
+0 0 0 rg
+BT /F1 7 Tf 8.4 TL ET
+BT 1 0 0 1 202.7318 22 Tm (append one line) Tj T* ET
+Q
+q
+1 0 0 1 70 429.8898 cm
+q
+.32 .32 .32 rg
+BT 1 0 0 1 0 2.5 Tm /F3 8.5 Tf 11 TL (Figure 1. The membrane. The model sees the workspace. The file keeps the rest.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 70 374.8898 cm
+q
+0 0 0 rg
+BT 1 0 0 1 0 34.5 Tm /F1 10.5 Tf 15 TL 1.669185 Tw (The budget is an estimate: four characters to one token, rounded up. AngularAI enforces that) Tj T* 0 Tw .572005 Tw (estimate. It is not the provider's tokenizer. A short call and a long life can share one budget. The) Tj T* 0 Tw (file may outgrow it. The call may not.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 70 350.8898 cm
+q
+0 0 0 rg
+BT 1 0 0 1 0 3 Tm /F2 12 Tf 15 TL (What a pass writes) Tj T* ET
+Q
+Q
+q
+1 0 0 1 70 297.8898 cm
+q
+0 0 0 rg
+BT 1 0 0 1 0 34.5 Tm /F1 10.5 Tf 15 TL .16929 Tw (A secret in the input is refused before the call, and before any line is written. The key is not a field) Tj T* 0 Tw .113256 Tw (in the cortex. It is read from the environment when you speak. OpenAI, Anthropic, or a compatible) Tj T* 0 Tw (endpoint: the same rule.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 70 243.8898 cm
+q
+0 0 0 rg
+BT 1 0 0 1 0 34.5 Tm /F1 10.5 Tf 15 TL -0.1196 Tw (The reply comes back through a value lock. A phrase you forbade, or a secret in the reply, holds it.) Tj T* 0 Tw .216952 Tw (You see one sentence: Value lock held this reply. The held text is not stored. A reply that was not) Tj T* 0 Tw (judged cannot leave.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 65.6378 154.8898 cm
+q
+0 0 0 rg
+BT /F2 9 Tf 12 TL ET
+BT 1 0 0 1 0 67 Tm (Completed) Tj T* ET
+BT /F1 9 Tf 12 TL ET
+BT 1 0 0 1 78 67 Tm (The reply, and up to twenty-four traces.) Tj T* ET
+BT /F2 9 Tf 12 TL ET
+BT 1 0 0 1 0 47 Tm (Held) Tj T* ET
+BT /F1 9 Tf 12 TL ET
+BT 1 0 0 1 78 47 Tm (The hold sentence. No new traces.) Tj T* ET
+BT /F2 9 Tf 12 TL ET
+BT 1 0 0 1 0 27 Tm (Failed) Tj T* ET
+BT /F1 9 Tf 12 TL ET
+BT 1 0 0 1 78 27 Tm (The episode and the error. No new traces.) Tj T* ET
+BT /F2 9 Tf 12 TL ET
+BT 1 0 0 1 0 7 Tm (Refused) Tj T* ET
+BT /F1 9 Tf 12 TL ET
+BT 1 0 0 1 78 7 Tm (A secret in the input. Nothing is written.) Tj T* ET
+q
+1 J
+1 j
+.75 .75 .75 RG
+.3 w
+n 0 60 m 464 60 l S
+n 0 40 m 464 40 l S
+n 0 20 m 464 20 l S
+Q
+Q
+Q
+q
+1 0 0 1 70 146.8898 cm
+Q
+q
+1 0 0 1 70 101.8898 cm
+q
+0 0 0 rg
+BT 1 0 0 1 0 34.5 Tm /F1 10.5 Tf 15 TL 2.773037 Tw (A finished pass appends one line to the log. Folding that log produces the traces and the) Tj T* 0 Tw .703206 Tw (episodes. A trace the model was not shown cannot be superseded. A superseded trace stays in) Tj T* 0 Tw (the file and leaves the workspace.) Tj T* ET
+Q
+Q
+ 
+endstream
+endobj
+11 0 obj
+<<
+/Length 3738
+>>
+stream
+1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
+q
+0 0 0 RG
+.4 w
+n 64 801.8898 m 531.2756 801.8898 l S
+.32 .32 .32 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 64 807.8898 Tm (AngularAI) Tj T* ET
+BT 1 0 0 1 400.5396 807.8898 Tm (A cortex in front of a language model) Tj T* ET
+Q
+q
+0 0 0 RG
+.4 w
+n 64 40 m 531.2756 40 l S
+.32 .32 .32 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 64 26 Tm (Teodor Walter Vido) Tj T* ET
+BT 1 0 0 1 526.8276 26 Tm (2) Tj T* ET
+Q
+q
+1 0 0 1 70 645.8898 cm
+0 0 0 RG
+1 1 1 rg
+.8 w
+n 0 8 137.0919 108 re S
+0 0 0 rg
+BT /F2 8 Tf 9.6 TL ET
+BT 1 0 0 1 8 102 Tm (On disk) Tj T* ET
+.75 .75 .75 RG
+.4 w
+n 8 98 m 129.0919 98 l S
+0 0 0 RG
+1 1 1 rg
+.8 w
+n 159.0919 8 137.0919 108 re S
+0 0 0 rg
+BT /F2 8 Tf 9.6 TL ET
+BT 1 0 0 1 167.0919 102 Tm (This call) Tj T* ET
+.75 .75 .75 RG
+.4 w
+n 167.0919 98 m 288.1837 98 l S
+0 0 0 RG
+1 1 1 rg
+.8 w
+n 318.1837 8 137.0919 108 re S
+0 0 0 rg
+BT /F2 8 Tf 9.6 TL ET
+BT 1 0 0 1 326.1837 102 Tm (Reply) Tj T* ET
+.75 .75 .75 RG
+.4 w
+n 326.1837 98 m 447.2756 98 l S
+0 0 0 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 8 82 Tm (The notebook is blue.) Tj T* ET
+.32 .32 .32 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 8 66 Tm (Catering is at noon.) Tj T* ET
+.32 .32 .32 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 167.0919 82 Tm (TRACES) Tj T* ET
+0 0 0 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 167.0919 68 Tm (The notebook is blue.) Tj T* ET
+.32 .32 .32 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 167.0919 50 Tm (INPUT) Tj T* ET
+0 0 0 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 167.0919 36 Tm (Which notebook?) Tj T* ET
+0 0 0 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 326.1837 82 Tm (The notebook is blue.) Tj T* ET
+0 0 0 RG
+0 0 0 rg
+.7 w
+n 139.0919 62 m 151.0919 62 l S
+n 157.0919 62 m 151.0919 65 l 151.0919 59 l h
+f*
+0 0 0 RG
+0 0 0 rg
+.7 w
+n 298.1837 62 m 310.1837 62 l S
+n 316.1837 62 m 310.1837 65 l 310.1837 59 l h
+f*
+Q
+q
+1 0 0 1 70 631.8898 cm
+q
+.32 .32 .32 rg
+BT 1 0 0 1 0 2.5 Tm /F3 8.5 Tf 11 TL (Figure 2. One question, after the fact is on disk. Catering shares no words with the question, so it is not sent.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 70 561.8898 cm
+q
+0 0 0 rg
+BT 1 0 0 1 0 49.5 Tm /F1 10.5 Tf 15 TL -0.032432 Tw (Recall is that same overlap. What color is the notebook? meets The notebook is blue. What shade) Tj T* 0 Tw .525321 Tw (is it? does not. A long episode is stored in full. The call is shown the sentences that share words) Tj T* 0 Tw 1.207906 Tw (with the question, and the opening stretch when none do. One pass keeps at most twenty-four) Tj T* 0 Tw (traces. Each trace is at most two hundred and forty characters.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 70 488.8898 cm
+0 0 0 RG
+.8 w
+1 1 1 rg
+n 0 26 455.2756 16 re S
+0 0 0 rg
+n 0 26 91.05512 16 re f*
+0 0 0 rg
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 0 8 Tm (this call) Tj T* ET
+BT 1 0 0 1 398.8036 8 Tm (the rest, on disk) Tj T* ET
+Q
+q
+1 0 0 1 70 474.8898 cm
+q
+.32 .32 .32 rg
+BT 1 0 0 1 0 2.5 Tm /F3 8.5 Tf 11 TL (Figure 3. The budget. The filled part is one call. The open part stayed on disk.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 70 449.8898 cm
+q
+0 0 0 rg
+BT 1 0 0 1 0 3 Tm /F2 12 Tf 15 TL (The session) Tj T* ET
+Q
+Q
+q
+1 0 0 1 70 396.8898 cm
+q
+0 0 0 rg
+BT 1 0 0 1 0 34.5 Tm /F1 10.5 Tf 15 TL .965741 Tw (In a terminal, angularai opens this cortex. The transcript is the sitting. The status line is the last) Tj T* 0 Tw -0.031776 Tw (pass: which model, how much of the budget was sent, how many traces are current. angularai say) Tj T* 0 Tw (is one turn with no screen. The reply is the only thing it prints.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 70 357.8898 cm
+q
+0 0 0 rg
+BT 1 0 0 1 0 19.5 Tm /F1 10.5 Tf 15 TL 2.170508 Tw (The directory is ~/.angularai/default unless you point elsewhere. cortex.json is the wiring, the) Tj T* 0 Tw (budget, and the locks. passes.jsonl is the life. It is append-only, and it is readable only by you.) Tj T* ET
+Q
+Q
+ 
+endstream
+endobj
+xref
+0 12
+0000000000 65535 f 
+0000000061 00000 n 
+0000000112 00000 n 
+0000000219 00000 n 
+0000000331 00000 n 
+0000000446 00000 n 
+0000000650 00000 n 
+0000000854 00000 n 
+0000000922 00000 n 
+0000001203 00000 n 
+0000001268 00000 n 
+0000007382 00000 n 
+trailer
+<<
+/ID 
+[<e55be2f4648c3e02433ddce31bfcba2c><e55be2f4648c3e02433ddce31bfcba2c>]
+% ReportLab generated PDF document -- digest (opensource)
+
+/Info 8 0 R
+/Root 7 0 R
+/Size 12
+>>
+startxref
+11172
+%%EOF

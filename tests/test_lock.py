@@ -2,20 +2,20 @@ from dataclasses import replace
 
 import pytest
 
-from clasp.attention import score
-from clasp.errors import InputDoesNotFit, InputRejected, LockBypass, SubstrateUnreadable
-from clasp.lock import HELD, Thinker, ValueLock
-from clasp.models import Integration, TraceDraft, Workspace
-from clasp.parse import parse_integration
-from clasp.pilot import pass_turn
-from clasp.secrets import redact
-from clasp.store import init_cortex, open_store
+from angularai.attention import score
+from angularai.errors import InputDoesNotFit, InputRejected, LockBypass, SubstrateUnreadable
+from angularai.lock import HELD, Thinker, ValueLock
+from angularai.models import Integration, TraceDraft, Workspace
+from angularai.parse import parse_integration
+from angularai.pilot import pass_turn
+from angularai.secrets import redact
+from angularai.store import init_cortex, open_store
 from tests.scripted import Scripted
 
 
-def test_live_matches_lives() -> None:
-    assert score("Where do I live?", "Lives in Nitra.") == 1
-    assert score("Where do I live?", "the warehouse counted cedar planks at dawn") == 0
+def test_a_plural_meets_its_singular() -> None:
+    assert score("live", "lives") == 1
+    assert score("live", "the warehouse counted cedar planks at dawn") == 0
 
 
 def test_value_lock_holds_the_reply_and_drops_the_trace(tmp_path) -> None:
@@ -112,6 +112,15 @@ def test_parse_accepts_a_fence_and_drops_a_bad_trace() -> None:
     assert parsed.reply == "Hello."
     assert parsed.remember == (TraceDraft("Fine.", ("place",)),)
     assert parsed.supersede == ("t_abc123def456",)
+
+
+def test_a_dense_brief_keeps_more_than_six_facts() -> None:
+    facts = ",".join(
+        f'{{"text":"Fact number {index} stays.","wavelengths":["fact"]}}' for index in range(10)
+    )
+    parsed = parse_integration(f'{{"reply":"Noted.","remember":[{facts}],"supersede":[]}}')
+    assert len(parsed.remember) == 10
+    assert parsed.remember[-1].text == "Fact number 9 stays."
 
 
 def test_parse_rejects_a_missing_reply() -> None:

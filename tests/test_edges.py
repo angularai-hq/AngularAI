@@ -8,24 +8,30 @@ from urllib.request import Request
 
 import pytest
 
-from clasp.attention import score, tokens
-from clasp.budget import estimate_tokens
-from clasp.cli import _repl, main, repl_line
-from clasp.configure import add_lock, remove_lock, set_budget, wire
-from clasp.errors import (
+from angularai.attention import score, tokens
+from angularai.budget import estimate_tokens
+from angularai.cli import _repl, main, repl_line
+from angularai.configure import add_lock, remove_lock, set_budget, wire
+from angularai.errors import (
     ConfigError,
     InputDoesNotFit,
     InputRejected,
     KeyMissing,
     SubstrateUnavailable,
 )
-from clasp.http import http_json
-from clasp.lock import ValueLock
-from clasp.models import Integration
-from clasp.pilot import pass_turn
-from clasp.present import format_banner, format_locks, format_recall, format_status, format_traces
-from clasp.store import init_cortex, open_store
-from clasp.substrate import build_substrate
+from angularai.http import http_json
+from angularai.lock import ValueLock
+from angularai.models import Integration
+from angularai.pilot import pass_turn
+from angularai.present import (
+    format_banner,
+    format_locks,
+    format_recall,
+    format_status,
+    format_traces,
+)
+from angularai.store import init_cortex, open_store
+from angularai.substrate import build_substrate
 from tests.scripted import Scripted, noted
 
 
@@ -76,13 +82,13 @@ def test_fixed_workspace_can_exceed_the_budget(tmp_path: Path) -> None:
 def test_continuity_stays_out_when_the_budget_is_full(tmp_path: Path) -> None:
     init_cortex(tmp_path)
     store = open_store(tmp_path)
-    pass_turn(store, Scripted(noted("Lives in Nitra.", "place")), "I live in Nitra.")
+    pass_turn(store, Scripted(noted("The notebook is blue.", "place")), "I have a blue notebook.")
     long_note = "warehouse " + ("cedar " * 120)
     pass_turn(store, Scripted(Integration("Ok.", (), ())), long_note)
     store.save_config(replace(store.config(), workspace_budget=256, max_input_tokens=80))
-    question = Scripted(Integration("You live in Nitra.", (), ()))
-    pass_turn(store, question, "Where do I live?")
-    assert "Lives in Nitra." in question.seen[-1].user
+    question = Scripted(Integration("The notebook is blue.", (), ()))
+    pass_turn(store, question, "What color is the notebook?")
+    assert "The notebook is blue." in question.seen[-1].user
     assert "cedar cedar" not in question.seen[-1].user
 
 
@@ -95,21 +101,21 @@ def test_an_unanswered_episode_can_return(tmp_path: Path) -> None:
             raise SubstrateUnavailable("The substrate is unreachable.")
 
     with pytest.raises(SubstrateUnavailable):
-        pass_turn(store, Down(), "I live in Nitra and the river is long.")
-    follow = Scripted(Integration("Nitra.", (), ()))
-    pass_turn(store, follow, "Where do I live?")
-    assert "I live in Nitra" in follow.seen[-1].user
-    assert "clasp  " not in follow.seen[-1].user.split("RECENT", 1)[-1].split("INPUT", 1)[0]
+        pass_turn(store, Down(), "I have a blue notebook and the river is long.")
+    follow = Scripted(Integration("Blue.", (), ()))
+    pass_turn(store, follow, "What color is the notebook?")
+    assert "I have a blue notebook" in follow.seen[-1].user
+    assert "angularai  " not in follow.seen[-1].user.split("RECENT", 1)[-1].split("INPUT", 1)[0]
 
 
 def test_present_reads_a_lived_cortex(tmp_path: Path) -> None:
     init_cortex(tmp_path)
     store = open_store(tmp_path)
-    pass_turn(store, Scripted(noted("Lives in Nitra.")), "I live in Nitra.")
+    pass_turn(store, Scripted(noted("The notebook is blue.")), "I have a blue notebook.")
     view = store.view()
-    assert "Lives in Nitra." in format_traces(view)
-    assert "Lives in Nitra." in format_recall(view, "live")
-    assert "clasp  unwired" in format_banner(store.config(), view)
+    assert "The notebook is blue." in format_traces(view)
+    assert "The notebook is blue." in format_recall(view, "notebook")
+    assert "angularai  unwired" in format_banner(store.config(), view)
     status = format_status(
         root=store.root,
         config=store.config(),
@@ -200,29 +206,29 @@ def test_http_reads_a_body_and_names_failures(monkeypatch: pytest.MonkeyPatch) -
             assert isinstance(outcome, Response)
             return outcome
 
-    monkeypatch.setattr("clasp.http._OPENER", Opener(Response(200, b"{}")))
+    monkeypatch.setattr("angularai.http._OPENER", Opener(Response(200, b"{}")))
     assert http_json("http://example.test", {}, {"a": 1}) == (200, b"{}")
 
-    monkeypatch.setattr("clasp.http._OPENER", Opener(Response(200, bytearray(b"{}"))))
+    monkeypatch.setattr("angularai.http._OPENER", Opener(Response(200, bytearray(b"{}"))))
     assert http_json("http://example.test", {}, {})[1] == b"{}"
 
-    monkeypatch.setattr("clasp.http._OPENER", Opener(Response("200", b"{}")))
+    monkeypatch.setattr("angularai.http._OPENER", Opener(Response("200", b"{}")))
     with pytest.raises(SubstrateUnavailable, match="unreadable status"):
         http_json("http://example.test", {}, {})
 
     error = HTTPError("http://example.test", 401, "no", Message(), BytesIO(b"nope"))
-    monkeypatch.setattr("clasp.http._OPENER", Opener(error))
+    monkeypatch.setattr("angularai.http._OPENER", Opener(error))
     assert http_json("http://example.test", {}, {}) == (401, b"nope")
 
-    monkeypatch.setattr("clasp.http._OPENER", Opener(TimeoutError("slow")))
+    monkeypatch.setattr("angularai.http._OPENER", Opener(TimeoutError("slow")))
     with pytest.raises(SubstrateUnavailable, match="timed out"):
         http_json("http://example.test", {}, {})
 
-    monkeypatch.setattr("clasp.http._OPENER", Opener(URLError(TimeoutError("slow"))))
+    monkeypatch.setattr("angularai.http._OPENER", Opener(URLError(TimeoutError("slow"))))
     with pytest.raises(SubstrateUnavailable, match="timed out"):
         http_json("http://example.test", {}, {})
 
-    monkeypatch.setattr("clasp.http._OPENER", Opener(URLError("down")))
+    monkeypatch.setattr("angularai.http._OPENER", Opener(URLError("down")))
     with pytest.raises(SubstrateUnavailable, match="unreachable"):
         http_json("http://example.test", {}, {})
 
@@ -233,7 +239,7 @@ def test_repl_and_commands(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     assert main(["--cortex", str(tmp_path), "status"]) == 1
-    assert "clasp init" in capsys.readouterr().err
+    assert "angularai init" in capsys.readouterr().err
     assert main(["--cortex", str(tmp_path), "init"]) == 0
     assert main(["--cortex", str(tmp_path), "budget"]) == 0
     assert "2000" in capsys.readouterr().out
@@ -249,7 +255,7 @@ def test_repl_and_commands(
 
     lines = iter(["hello", "/quit"])
     monkeypatch.setattr("builtins.input", lambda prompt: next(lines))
-    monkeypatch.setattr("clasp.cli._speak", lambda store, text: "Hello.")
+    monkeypatch.setattr("angularai.cli._speak", lambda store, text: "Hello.")
     assert _repl(store) == 0
     assert "Hello." in capsys.readouterr().out
 
@@ -262,7 +268,7 @@ def test_repl_and_commands(
     def refuse(store: object, text: str) -> str:
         raise InputRejected("Say something first.")
 
-    monkeypatch.setattr("clasp.cli._speak", refuse)
+    monkeypatch.setattr("angularai.cli._speak", refuse)
     calls = {"n": 0}
 
     def once(prompt: str) -> str:

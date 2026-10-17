@@ -1,15 +1,15 @@
 import json
 import re
 
-from clasp.errors import SubstrateUnreadable
-from clasp.models import Integration, TraceDraft
+from angularai.errors import SubstrateUnreadable
+from angularai.models import Integration, TraceDraft
 
 _SLUG = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
 _TRACE_ID = re.compile(r"^t_[0-9a-f]{12}$")
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
 _MAX_REPLY = 8000
 _MAX_TRACE = 240
-_MAX_REMEMBER = 6
+_MAX_REMEMBER = 24
 _MAX_SUPERSEDE = 8
 
 _UNREADABLE = "The model did not return a cortex reply. Nothing was written."

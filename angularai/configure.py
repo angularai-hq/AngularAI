@@ -1,9 +1,9 @@
 from dataclasses import replace
 
-from clasp.errors import InputRejected
-from clasp.models import Config, SubstrateKind
-from clasp.store import Store
-from clasp.urls import validate_base_url
+from angularai.errors import InputRejected
+from angularai.models import Config, SubstrateKind
+from angularai.store import Store
+from angularai.urls import validate_base_url
 
 _MIN_BUDGET = 256
 _MAX_BUDGET = 32000

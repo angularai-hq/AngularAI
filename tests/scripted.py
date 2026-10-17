@@ -1,4 +1,4 @@
-from clasp.models import Integration, TraceDraft, Workspace
+from angularai.models import Integration, TraceDraft, Workspace
 
 
 class Scripted:
