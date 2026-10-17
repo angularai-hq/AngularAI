@@ -12,7 +12,9 @@ Three ways a string counts as a secret:
    it mixes lower case, upper case, and digits, holds at least four digits, has
    Shannon entropy of at least 4.2 bits a character, and is not hex. Hex runs
    (git SHAs, sha256, md5) and UUIDs are hex, so they pass. Words, paths, and
-   camelCase identifiers fail the mix or the entropy floor.
+   camelCase identifiers fail the mix or the entropy floor. A run that starts like a
+   path (``/``, ``./``, ``../``, ``~/``) is judged one segment at a time, so a
+   temporary directory such as ``/private/var/folders/…/T/…`` is not a secret.
 
 A value from the environment is a secret too, when its variable name looks like
 one (see ``environment_secrets``). Eight characters or more match anywhere. Six or
@@ -152,11 +154,20 @@ def _value_redactor(match: re.Match[str]) -> str:
 
 
 def _run_redactor(match: re.Match[str]) -> str:
-    return _REDACTED if _random(match.group(0)) else match.group(0)
+    run = match.group(0)
+    if _path(run):
+        return "/".join(_REDACTED if _random(part) else part for part in run.split("/"))
+    return _REDACTED if _random(run) else run
+
+
+def _path(run: str) -> bool:
+    return run.startswith(("/", "./", "../", "~/"))
 
 
 def _random(run: str) -> bool:
-    if _HEX.fullmatch(run):
+    if _path(run):
+        return any(_random(part) for part in run.split("/") if part)
+    if len(run) < 32 or _HEX.fullmatch(run):
         return False
     if not (_has(run, str.islower) and _has(run, str.isupper)):
         return False

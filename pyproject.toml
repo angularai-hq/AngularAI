@@ -54,7 +54,8 @@ known-first-party = ["angularai", "tests"]
 [tool.mypy]
 strict = true
 python_version = "3.12"
-files = ["angularai"]
+files = ["angularai", "tests"]
+explicit_package_bases = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

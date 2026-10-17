@@ -13,6 +13,10 @@
   <a href="docs/angularai.pdf">The paper</a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/angularai-hq/AngularAI/actions/workflows/ci.yml"><img src="https://github.com/angularai-hq/AngularAI/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci"></a>
+</p>
+
 ```text
 angularai 0.1.0
 The notebook is blue.
@@ -172,9 +176,13 @@ No cortex yet: `angularai init`. No key: the missing variable is named, and the 
 ## Verify
 
 ```bash
-uv run pytest
+uv run ruff check
+uv run ruff format --check
 uv run mypy
-uv run ruff check .
+uv run pytest --cov
+uv build
 ```
+
+CI runs the same five on Linux and macOS, Python 3.12 and 3.13, for every pull request and every push to main. Coverage under 80% fails.
 
 The invariant is `tests/test_membrane.py`, and for the agent `tests/test_agent.py`. A fact from the start of a long life is in the workspace, an unrelated episode that would have fit is not, and every call stays inside the budget. The agent reads the file it asked for. The file it did not ask for is not sent.

@@ -8,7 +8,9 @@ from angularai.store import init_cortex, open_store
 KEY = "sk-test-secret-value-xyz"
 
 
-def test_init_wire_and_status_keep_the_key_out(tmp_path: Path, monkeypatch, capsys) -> None:
+def test_init_wire_and_status_keep_the_key_out(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", KEY)
     assert main(["--cortex", str(tmp_path), "init"]) == 0
     assert main(["--cortex", str(tmp_path), "wire", "openai", "--model", "demo-model"]) == 0
@@ -23,7 +25,9 @@ def test_init_wire_and_status_keep_the_key_out(tmp_path: Path, monkeypatch, caps
     assert "demo-model" in out
 
 
-def test_agent_without_a_key_names_the_variable(tmp_path: Path, monkeypatch, capsys) -> None:
+def test_agent_without_a_key_names_the_variable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     assert main(["--cortex", str(tmp_path), "init"]) == 0
     assert main(["--cortex", str(tmp_path), "wire", "openai", "--model", "demo-model"]) == 0
@@ -35,7 +39,9 @@ def test_agent_without_a_key_names_the_variable(tmp_path: Path, monkeypatch, cap
     assert "sk-" not in err
 
 
-def test_say_without_a_key_names_the_variable(tmp_path: Path, monkeypatch, capsys) -> None:
+def test_say_without_a_key_names_the_variable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     assert main(["--cortex", str(tmp_path), "init"]) == 0
     assert main(["--cortex", str(tmp_path), "wire", "openai", "--model", "demo-model"]) == 0
@@ -46,7 +52,7 @@ def test_say_without_a_key_names_the_variable(tmp_path: Path, monkeypatch, capsy
     assert "sk-" not in err
 
 
-def test_empty_cortex_and_recall(tmp_path: Path, capsys) -> None:
+def test_empty_cortex_and_recall(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["--cortex", str(tmp_path), "init"]) == 0
     capsys.readouterr()
     assert main(["--cortex", str(tmp_path), "cortex"]) == 0
@@ -55,7 +61,7 @@ def test_empty_cortex_and_recall(tmp_path: Path, capsys) -> None:
     assert "Nothing in the cortex" in capsys.readouterr().out
 
 
-def test_budget_and_lock(tmp_path: Path, capsys) -> None:
+def test_budget_and_lock(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["--cortex", str(tmp_path), "init"]) == 0
     assert main(["--cortex", str(tmp_path), "budget", "10"]) == 1
     assert "between" in capsys.readouterr().err
@@ -66,7 +72,9 @@ def test_budget_and_lock(tmp_path: Path, capsys) -> None:
     assert '"workspace_budget": 1500' in config
 
 
-def test_compatible_url_cannot_carry_a_key(tmp_path: Path, capsys) -> None:
+def test_compatible_url_cannot_carry_a_key(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     assert main(["--cortex", str(tmp_path), "init"]) == 0
     capsys.readouterr()
     code = main(

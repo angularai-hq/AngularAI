@@ -10,7 +10,7 @@ from textual.widgets import Input, Static
 
 from angularai.cli import main, repl_line
 from angularai.errors import InputRejected, SubstrateUnavailable
-from angularai.models import Workspace
+from angularai.models import Integration, Workspace
 from angularai.pilot import pass_turn
 from angularai.store import Store, init_cortex, open_store
 from angularai.tui import AngularApp, Block, Speaker, run_tui, status_line
@@ -113,7 +113,7 @@ def test_a_failed_call_is_replayed_without_a_trace(tmp_path: Path) -> None:
     store = _cortex(tmp_path)
 
     class Down:
-        def integrate(self, workspace: Workspace) -> object:
+        def integrate(self, workspace: Workspace) -> Integration:
             raise SubstrateUnavailable("The substrate is unreachable.")
 
     with pytest.raises(SubstrateUnavailable):
@@ -183,7 +183,7 @@ async def _commands(store: Store) -> None:
         assert field.value == ""
         await pilot.press("/", "c", "o")
         await pilot.pause()
-        hints = " ".join(str(hint.content) for hint in app.query(".hint"))
+        hints = " ".join(str(hint.content) for hint in app.query(".hint").results(Static))
         assert "/cortex" in hints
         assert "/quit" not in hints
         await pilot.press("tab")
@@ -259,7 +259,7 @@ async def _sees(store: Store, needle: str) -> None:
         assert needle in rendered
 
 
-async def _until(pilot: Pilot, needle: str) -> None:
+async def _until(pilot: Pilot[None], needle: str) -> None:
     deadline = time.monotonic() + _WAIT
     while time.monotonic() < deadline:
         await pilot.pause(0.05)
