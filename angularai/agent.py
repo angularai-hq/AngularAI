@@ -49,6 +49,7 @@ def run_agent(
     secrets: tuple[str, ...] = (),
     steps: int = _DEFAULT_STEPS,
     on_step: Callable[[str], None] | None = None,
+    allow_run: bool = False,
 ) -> AgentResult:
     if steps < 1 or steps > _MAX_STEPS:
         raise InputRejected(f"Steps must be from 1 to {_MAX_STEPS}.")
@@ -71,7 +72,7 @@ def run_agent(
             return AgentResult(reply, index, stop)
         if on_step is not None:
             on_step(f"{index}  {_detail(result.act)}")
-        last = f"{_detail(result.act)}\n{execute(directory, result.act, secrets)}"
+        last = f"{_detail(result.act)}\n{execute(directory, result.act, secrets, allow_run)}"
     return AgentResult(reply, steps, "budget")
 
 

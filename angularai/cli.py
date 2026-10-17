@@ -96,6 +96,7 @@ def _agent(root: Path, args: argparse.Namespace) -> int:
     store = open_store(root)
     directory = Path.cwd() if args.root is None else args.root
     print(f"root  {directory.expanduser().resolve()}", file=sys.stderr)
+    print(f"run   {'on' if args.allow_run else 'off'}", file=sys.stderr)
     substrate = build_substrate(store.config(), os.environ)
     result = run_agent(
         store,
@@ -105,6 +106,7 @@ def _agent(root: Path, args: argparse.Namespace) -> int:
         secret_values(os.environ),
         args.steps,
         lambda line: print(line, file=sys.stderr),
+        args.allow_run,
     )
     if result.stop == "budget":
         print("The step budget is spent.", file=sys.stderr)
@@ -248,6 +250,11 @@ def _parser() -> argparse.ArgumentParser:
     agent.add_argument("task", nargs="+")
     agent.add_argument("--root", type=Path, default=None)
     agent.add_argument("--steps", type=int, default=8)
+    agent.add_argument(
+        "--allow-run",
+        action="store_true",
+        help="Let the agent start allowlisted programs. Off by default.",
+    )
 
     sub.add_parser("cortex", help="List what the cortex currently knows.")
     recall = sub.add_parser("recall", help="Find traces without calling a model.")

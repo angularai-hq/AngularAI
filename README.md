@@ -49,7 +49,17 @@ angularai agent "make the failing test pass"
 angularai agent --root ~/src/app --steps 12 "rename the command"
 ```
 
-The agent works inside one directory. One tool a pass: `list`, `read`, `search`, `edit`, `write`, or `run`. `run` starts a program there, with no shell. A path that leaves the directory is refused, including a symlink. A secret in a file is redacted before the next pass. The step budget is 8, and 24 is the most. The reply is the only line on stdout. The steps are on stderr.
+The agent works inside one directory. One tool a pass: `list`, `read`, `search`, `edit`, `write`, or `run`. A path that leaves the directory is refused. Every link is followed first, so a symlink that points out is refused by `list`, `read`, `search`, `edit`, and `write`. Inside a directory, `list` and `search` skip it. A secret in a file that matches a known key pattern, or equals `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `ANGULARAI_API_KEY`, is redacted before the next pass. The step budget is 8, and 24 is the most. The reply is the only line on stdout. The steps are on stderr.
+
+`run` is off. `--allow-run` turns it on for that command.
+
+```bash
+angularai agent --allow-run "count the lines in the notes"
+```
+
+With `--allow-run`, `run` starts one program from an allowlist: `basename cat cmp cp cut dirname echo false grep head ls mkdir mv pwd rm rmdir sort stat tail touch true uniq wc`. There is no shell, no interpreter, no `find`, `xargs`, `env`, `git`, or `make`. The program comes from `/usr/bin:/bin`, never from the directory. Every argument that names a path must resolve inside the directory. Options that run a program or follow a link out are refused: `cp -L -H --dereference`, `grep -R --dereference-recursive`, `sort --compress-program`, `--files0-from`. The program starts in the directory with three variables: `PATH=/usr/bin:/bin`, `HOME` set to the directory, and `LANG`. No API key is passed. Output stops at 64 KiB. After 20 seconds the whole process group is killed.
+
+This is a filter on what starts, not an operating-system sandbox. No allowlisted program opens a network connection, but nothing at the OS level blocks one. `rm` and `mv` can delete or move anything inside the directory. `run` needs Linux or macOS.
 
 The membrane still holds. The model does not receive the tree. It receives the task, the last tool, and the traces that fit.
 
