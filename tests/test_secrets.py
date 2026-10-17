@@ -69,6 +69,11 @@ ORDINARY = [
     ("prose", "My password: forgotten"),
     ("null", "secret=None"),
     ("words", "I have a blue notebook."),
+    (
+        "macos temp",
+        "/private/var/folders/xd/1b2c3d4e5f6g7h8j9k0l1m2n3p000gn/T/pytest-of-runner/pytest-0/work",
+    ),
+    ("relative path", "./build/Xk9mQ2vL/output/Release/AngularAI-Setup-2026.dmg"),
 ]
 
 
@@ -85,6 +90,12 @@ def test_a_secret_is_seen_and_redacted(name: str, text: str) -> None:
 def test_ordinary_text_is_not_a_secret(name: str, text: str) -> None:
     assert not looks_secret(text), name
     assert redact(text, ()) == text
+
+
+def test_a_random_segment_in_a_path_is_redacted_alone() -> None:
+    path = "/tmp/Xk9mQ2vL7pR4tY8wN3bF6hJ1sD5gA0cZ/out.txt"
+    assert looks_secret(path)
+    assert redact(path, ()) == "/tmp/[redacted]/out.txt"
 
 
 def test_an_assignment_keeps_its_name() -> None:
