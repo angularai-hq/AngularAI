@@ -1,0 +1,65 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "clasp"
+version = "0.1.0"
+description = "A cortex in front of a language model. The workspace is bounded. The memory is not."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [{ name = "Teodor Walter Vido" }]
+keywords = ["agents", "llm", "cli", "memory", "cortex"]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.13",
+    "pytest>=8.3",
+    "pytest-cov>=5",
+    "ruff>=0.8",
+]
+
+[project.scripts]
+clasp = "clasp.cli:main"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.13",
+    "pytest>=8.3",
+    "pytest-cov>=5",
+    "ruff>=0.8",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["clasp"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["clasp", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["N818"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["clasp", "tests"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+files = ["clasp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["clasp"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = false
