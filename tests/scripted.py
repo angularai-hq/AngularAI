@@ -1,13 +1,22 @@
+from collections.abc import Sequence
+
 from angularai.models import Integration, TraceDraft, Workspace
 
 
 class Scripted:
-    def __init__(self, reply: Integration | None = None) -> None:
+    def __init__(
+        self,
+        reply: Integration | None = None,
+        script: Sequence[Integration] = (),
+    ) -> None:
         self.seen: list[Workspace] = []
         self._reply = reply
+        self._script = list(script)
 
     def integrate(self, workspace: Workspace) -> Integration:
         self.seen.append(workspace)
+        if self._script:
+            return self._script.pop(0)
         if self._reply is None:
             raise AssertionError("scripted substrate has no reply")
         return self._reply

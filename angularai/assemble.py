@@ -30,7 +30,12 @@ class _Candidate:
     trace_id: str | None
 
 
-def assemble(view: CortexView, user_text: str, config: Config) -> Workspace:
+def assemble(
+    view: CortexView,
+    user_text: str,
+    config: Config,
+    system: str = SYSTEM,
+) -> Workspace:
     """Pack L2. Anything that does not fit stays on disk and is not sent."""
 
     text = user_text.strip()
@@ -46,7 +51,7 @@ def assemble(view: CortexView, user_text: str, config: Config) -> Workspace:
 
     def used(trace_lines: list[str], episode_lines: list[str]) -> int:
         body = head + "".join(trace_lines) + recent + "".join(episode_lines) + tail
-        return estimate_tokens(SYSTEM) + estimate_tokens(body)
+        return estimate_tokens(system) + estimate_tokens(body)
 
     if used([], []) > config.workspace_budget:
         raise InputDoesNotFit(
@@ -76,10 +81,10 @@ def assemble(view: CortexView, user_text: str, config: Config) -> Workspace:
     episode_lines = _lines(sorted(chosen_episodes, key=lambda item: item.at))
     trace_lines = _lines(chosen_traces)
     body = head + "".join(trace_lines) + recent + "".join(episode_lines) + tail
-    total = estimate_tokens(SYSTEM) + estimate_tokens(body)
+    total = estimate_tokens(system) + estimate_tokens(body)
     shown_episodes = {item.at for item in chosen_episodes}
     return Workspace(
-        system=SYSTEM,
+        system=system,
         user=body,
         input_text=text,
         trace_ids=tuple(item.trace_id for item in chosen_traces if item.trace_id is not None),

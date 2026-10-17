@@ -24,10 +24,24 @@ class TraceDraft:
 
 
 @dataclass(frozen=True)
+class Action:
+    tool: str
+    path: str = ""
+    query: str = ""
+    old: str = ""
+    new: str = ""
+    text: str = ""
+    command: str = ""
+    start: int = 1
+    overwrite: bool = False
+
+
+@dataclass(frozen=True)
 class Integration:
     reply: str
     remember: tuple[TraceDraft, ...]
     supersede: tuple[str, ...]
+    act: Action | None = None
 
 
 @dataclass(frozen=True)
@@ -95,3 +109,4 @@ class TurnResult:
     held: bool
     used: int
     budget: int
+    act: Action | None = None

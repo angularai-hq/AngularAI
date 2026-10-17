@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Literal
 
 from angularai import __version__
+from angularai.agent import run_agent
 from angularai.configure import add_lock, remove_lock, set_budget, wire
 from angularai.errors import AngularAIError
 from angularai.models import SubstrateKind
@@ -48,6 +49,8 @@ def _dispatch(args: argparse.Namespace, cortex: Path | None) -> int:
         return _wire(root, args)
     if command == "say":
         return _say(root, " ".join(args.text))
+    if command == "agent":
+        return _agent(root, args)
     if command == "cortex":
         print(format_traces(open_store(root).view()))
         return 0
@@ -86,6 +89,26 @@ def _say(root: Path, text: str) -> int:
     store = open_store(root)
     reply = _speak(store, text)
     print(reply)
+    return 0
+
+
+def _agent(root: Path, args: argparse.Namespace) -> int:
+    store = open_store(root)
+    directory = Path.cwd() if args.root is None else args.root
+    print(f"root  {directory.expanduser().resolve()}", file=sys.stderr)
+    substrate = build_substrate(store.config(), os.environ)
+    result = run_agent(
+        store,
+        substrate,
+        " ".join(args.task),
+        directory,
+        secret_values(os.environ),
+        args.steps,
+        lambda line: print(line, file=sys.stderr),
+    )
+    if result.stop == "budget":
+        print("The step budget is spent.", file=sys.stderr)
+    print(result.reply)
     return 0
 
 
@@ -203,7 +226,8 @@ def _parser() -> argparse.ArgumentParser:
         description=_DESCRIPTION,
         epilog=(
             "With no command, a terminal opens the session. "
-            "angularai say is one turn, and the reply is the only thing it prints. "
+            "angularai say is one turn. angularai agent works a directory, one tool a pass. "
+            "The reply is the only thing either prints. "
             "--cortex PATH can be placed anywhere. The default cortex is ~/.angularai/default."
         ),
     )
@@ -219,6 +243,11 @@ def _parser() -> argparse.ArgumentParser:
 
     say = sub.add_parser("say", help="Speak one turn.")
     say.add_argument("text", nargs="+")
+
+    agent = sub.add_parser("agent", help="Work a task inside a directory.")
+    agent.add_argument("task", nargs="+")
+    agent.add_argument("--root", type=Path, default=None)
+    agent.add_argument("--steps", type=int, default=8)
 
     sub.add_parser("cortex", help="List what the cortex currently knows.")
     recall = sub.add_parser("recall", help="Find traces without calling a model.")

@@ -2,7 +2,7 @@ import json
 import re
 
 from angularai.errors import SubstrateUnreadable
-from angularai.models import Integration, TraceDraft
+from angularai.models import Action, Integration, TraceDraft
 
 _SLUG = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
 _TRACE_ID = re.compile(r"^t_[0-9a-f]{12}$")
@@ -30,7 +30,12 @@ def parse_integration(raw: str) -> Integration:
     reply = _reply(payload.get("reply"))
     remember = _remember(payload.get("remember", []))
     supersede = _supersede(payload.get("supersede", []))
-    return Integration(reply=reply, remember=remember, supersede=supersede)
+    return Integration(
+        reply=reply,
+        remember=remember,
+        supersede=supersede,
+        act=_act(payload.get("act")),
+    )
 
 
 def _reply(value: object) -> str:
@@ -87,6 +92,41 @@ def _wavelengths(value: object) -> tuple[str, ...] | None:
         if slug not in slugs:
             slugs.append(slug)
     return tuple(slugs)
+
+
+def _act(value: object) -> Action | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise SubstrateUnreadable(_UNREADABLE)
+    tool = value.get("tool")
+    if not isinstance(tool, str) or not tool.strip():
+        return None
+    return Action(
+        tool=tool.strip().lower()[:16],
+        path=_text(value.get("path"), 240),
+        query=_text(value.get("query"), 200),
+        old=_text(value.get("old"), 4000),
+        new=_text(value.get("new"), 8000),
+        text=_text(value.get("text"), 80000),
+        command=_text(value.get("command"), 400),
+        start=_start(value.get("start")),
+        overwrite=value.get("overwrite") is True,
+    )
+
+
+def _text(value: object, limit: int) -> str:
+    if not isinstance(value, str):
+        return ""
+    return value[:limit]
+
+
+def _start(value: object) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return 1
+    if value < 1:
+        return 1
+    return min(value, 100000)
 
 
 def _supersede(value: object) -> tuple[str, ...]:

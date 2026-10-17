@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from angularai.assemble import assemble
+from angularai.assemble import SYSTEM, assemble
 from angularai.errors import InputRejected, SubstrateError
 from angularai.lock import Thinker, ValueLock
 from angularai.models import (
@@ -25,6 +25,7 @@ def pass_turn(
     substrate: Substrate,
     user_text: str,
     secrets: tuple[str, ...] = (),
+    system: str | None = None,
 ) -> TurnResult:
     text = user_text.strip()
     if not text:
@@ -37,7 +38,8 @@ def pass_turn(
         )
 
     config = store.config()
-    workspace = assemble(store.view(), text, config)
+    prompt = SYSTEM if system is None else system
+    workspace = assemble(store.view(), text, config, prompt)
     try:
         integration = substrate.integrate(workspace)
     except SubstrateError as exc:
@@ -49,13 +51,15 @@ def pass_turn(
     reply = Thinker(lock).release(verdict)
     if not verdict.allowed:
         store.append_pass(_held_pass(text, reply, workspace, secrets))
-        return TurnResult(reply, True, workspace.estimated_tokens, workspace.budget)
+        return TurnResult(reply, True, workspace.estimated_tokens, workspace.budget, None)
 
     drafts = tuple(
         draft for draft in integration.remember if not contains_secret(draft.text, secrets)
     )
     store.append_pass(_ok_pass(text, reply, drafts, integration, workspace, secrets))
-    return TurnResult(reply, False, workspace.estimated_tokens, workspace.budget)
+    return TurnResult(
+        reply, False, workspace.estimated_tokens, workspace.budget, integration.act
+    )
 
 
 def _ok_pass(

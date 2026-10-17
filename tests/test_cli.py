@@ -23,6 +23,18 @@ def test_init_wire_and_status_keep_the_key_out(tmp_path: Path, monkeypatch, caps
     assert "demo-model" in out
 
 
+def test_agent_without_a_key_names_the_variable(tmp_path: Path, monkeypatch, capsys) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    assert main(["--cortex", str(tmp_path), "init"]) == 0
+    assert main(["--cortex", str(tmp_path), "wire", "openai", "--model", "demo-model"]) == 0
+    capsys.readouterr()
+    code = main(["--cortex", str(tmp_path), "agent", "--root", str(tmp_path), "look"])
+    assert code == 1
+    err = capsys.readouterr().err
+    assert "OPENAI_API_KEY" in err
+    assert "sk-" not in err
+
+
 def test_say_without_a_key_names_the_variable(tmp_path: Path, monkeypatch, capsys) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     assert main(["--cortex", str(tmp_path), "init"]) == 0

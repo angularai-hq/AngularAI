@@ -8,7 +8,7 @@ def test_the_page_states_the_cortex() -> None:
     style = (ROOT / "docs" / "site.css").read_text(encoding="utf-8")
     assert "A Cortex In Front Of The Model You Already Call" in page
     assert "angularai.pdf" in page
-    assert "uv tool install git+https://github.com/steamacc063-dot/AngularAI.git" in page
+    assert "uv tool install git+https://github.com/baiehclaca/AngularAI.git" in page
     assert "The notebook is blue." in page
     assert "What shade is it?" in page
     assert "site.css" in page
