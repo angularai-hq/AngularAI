@@ -191,8 +191,8 @@ def test_http_reads_a_body_and_names_failures(monkeypatch: pytest.MonkeyPatch) -
         def __enter__(self) -> "Response":
             return self
 
-        def __exit__(self, *args: object) -> bool:
-            return False
+        def __exit__(self, *args: object) -> None:
+            return None
 
     class Opener:
         def __init__(self, outcome: object) -> None:

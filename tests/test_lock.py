@@ -1,4 +1,5 @@
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -18,7 +19,7 @@ def test_a_plural_meets_its_singular() -> None:
     assert score("live", "the warehouse counted cedar planks at dawn") == 0
 
 
-def test_value_lock_holds_the_reply_and_drops_the_trace(tmp_path) -> None:
+def test_value_lock_holds_the_reply_and_drops_the_trace(tmp_path: Path) -> None:
     init_cortex(tmp_path)
     store = open_store(tmp_path)
     store.save_config(replace(store.config(), forbid=("dosing chart",)))
@@ -49,7 +50,7 @@ def test_thinker_rejects_a_verdict_from_another_lock() -> None:
     assert Thinker(lock).release(lock.judge("hello", (), ())) == "hello"
 
 
-def test_a_secret_in_the_input_is_not_sent(tmp_path) -> None:
+def test_a_secret_in_the_input_is_not_sent(tmp_path: Path) -> None:
     init_cortex(tmp_path)
     store = open_store(tmp_path)
 
@@ -62,7 +63,7 @@ def test_a_secret_in_the_input_is_not_sent(tmp_path) -> None:
     assert (tmp_path / "passes.jsonl").read_text(encoding="utf-8") == ""
 
 
-def test_a_secret_trace_is_dropped(tmp_path) -> None:
+def test_a_secret_trace_is_dropped(tmp_path: Path) -> None:
     init_cortex(tmp_path)
     store = open_store(tmp_path)
     result = pass_turn(
@@ -82,7 +83,7 @@ def test_a_secret_trace_is_dropped(tmp_path) -> None:
     assert store.view().current_traces() == ()
 
 
-def test_input_over_the_cap_writes_nothing(tmp_path) -> None:
+def test_input_over_the_cap_writes_nothing(tmp_path: Path) -> None:
     init_cortex(tmp_path)
     store = open_store(tmp_path)
     store.save_config(replace(store.config(), max_input_tokens=32))
