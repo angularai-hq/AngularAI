@@ -96,7 +96,17 @@ angularai
 angularai agent "make the failing test pass"
 ```
 
-One tool a pass, inside one directory: `list`, `read`, `search`, `edit`, `write`, `run`. `run` starts a program there, with no shell. A path that leaves the directory is refused, including a symlink. A secret in a file is redacted before the next pass. The step budget is 8. The reply is the only line on stdout.
+One tool a pass, inside one directory: `list`, `read`, `search`, `edit`, `write`, `run`. A path that leaves the directory is refused, including a symlink that points out. `list` and `search` skip one. A secret in a file that matches a known key pattern, or equals `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `ANGULARAI_API_KEY`, is redacted before the next pass. The step budget is 8. The reply is the only line on stdout.
+
+`run` is off. `--allow-run` turns it on for that command.
+
+```bash
+angularai agent --allow-run "count the lines in the notes"
+```
+
+With `--allow-run`, `run` starts one program from an allowlist: `basename cat cmp cp cut dirname echo false grep head ls mkdir mv pwd rm rmdir sort stat tail touch true uniq wc`. There is no shell, no interpreter, no `find`, `xargs`, `env`, `git`, or `make`. The program comes from `/usr/bin:/bin`, never from the directory. Every argument that names a path must resolve inside the directory. Options that run a program or follow a link out are refused: `cp -L -H --dereference`, `grep -R --dereference-recursive`, `sort --compress-program`, `--files0-from`. The program starts in the directory with three variables: `PATH=/usr/bin:/bin`, `HOME` set to the directory, and `LANG`. No API key is passed. Output stops at 64 KiB. After 20 seconds the whole process group is killed.
+
+This is a filter on what starts, not an operating-system sandbox. No allowlisted program opens a network connection, but nothing at the OS level blocks one. `rm` and `mv` can delete or move anything inside the directory. `run` needs Linux or macOS.
 
 ```text
 passes.jsonl          rank                 workspace

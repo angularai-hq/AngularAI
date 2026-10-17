@@ -55,7 +55,9 @@ def test_search_stays_inside_and_run_refuses_a_shell(tmp_path: Path) -> None:
     found = execute(root, Action("search", path=".", query="notebook"))
     assert "seen.txt" in found
     assert "elsewhere" not in found
-    refused = execute(root, Action("run", command="bash -c 'echo hi'"))
+    off = execute(root, Action("run", command="ls"))
+    assert "run is off" in off
+    refused = execute(root, Action("run", command="bash -c 'echo hi'"), allow_run=True)
     assert "Refused bash" in refused
-    left = execute(root, Action("run", command="rm -rf /"))
+    left = execute(root, Action("run", command="rm -rf /"), allow_run=True)
     assert "leaves the directory" in left
