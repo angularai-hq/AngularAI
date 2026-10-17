@@ -125,9 +125,7 @@ def _candidates(view: CortexView, query: str) -> tuple[_Candidate, ...]:
             _Candidate("trace", score(query, document), trace.at, _trace_line(trace), trace.id)
         )
     for episode in view.episodes:
-        items.append(
-            _episode_candidate(episode, score(query, _episode_document(episode)), query)
-        )
+        items.append(_episode_candidate(episode, score(query, _episode_document(episode)), query))
     return tuple(items)
 
 
