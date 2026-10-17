@@ -4,49 +4,202 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AngularAI</title>
-  <style>
-    :root { color-scheme: light; }
-    html { background: #fff; color: #111; }
-    body {
-      font-family: Helvetica, Arial, sans-serif;
-      max-width: 36rem;
-      margin: 0 auto;
-      padding: 5.5rem 1.5rem 6rem;
-      line-height: 1.55;
-      font-size: 1.05rem;
-    }
-    h1 {
-      font-size: 1.15rem;
-      font-weight: 700;
-      letter-spacing: 0.22em;
-      margin: 0 0 0.6rem;
-    }
-    .lede { margin: 0 0 1.6rem; }
-    p { margin: 0 0 1rem; }
-    a { color: inherit; }
-    pre {
-      margin: 1.6rem 0 0;
-      padding: 0;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 0.92rem;
-      line-height: 1.6;
-      white-space: pre-wrap;
-    }
-    footer {
-      margin-top: 3.5rem;
-      font-size: 0.85rem;
-      color: #444;
-    }
-  </style>
+  <meta name="description" content="A cortex in front of the model you already call. The call stays inside a budget. What it keeps is written on disk.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="site.css">
 </head>
-<body>
-  <h1>ANGULARAI</h1>
-  <p class="lede">A cortex in front of a language model.</p>
-  <p>A model answers inside one call. When the call ends, that window is gone. AngularAI sits in front of the API you already use. Each call is packed to a fixed budget. What the agent has learned stays in a file on the machine that asked.</p>
-  <p>The vendor’s weights do not change. The plasticity is the cortex.</p>
-  <p><a href="angularai.pdf">The paper</a></p>
-  <pre>uv tool install git+https://github.com/steamacc063-dot/AngularAI.git
-angularai</pre>
-  <footer>Teodor Walter Vido · 2026</footer>
+<body id="top">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="nav">
+    <a href="#top">AngularAI</a>
+    <nav aria-label="Page">
+      <a href="#membrane">Membrane</a>
+      <a href="angularai.pdf">Paper</a>
+      <a href="https://github.com/steamacc063-dot/AngularAI">GitHub</a>
+    </nav>
+    <a class="go" href="#install">Install</a>
+  </header>
+
+  <main id="main">
+    <section class="sky">
+      <p class="edge">angularai 0.1.0 · a cortex on disk · 2026</p>
+      <div class="hero">
+        <div class="term">
+          <header>angularai 0.1.0</header>
+          <div class="body">
+            <p>The notebook is blue.</p>
+            <p>On disk. The model sees what fits.</p>
+          </div>
+        </div>
+        <p class="kicker">not a new model</p>
+        <h1>A Cortex In Front Of The Model You Already Call</h1>
+        <p class="actions">
+          <a href="angularai.pdf">The paper</a>
+          <a href="#install">Install</a>
+        </p>
+      </div>
+    </section>
+
+    <section class="field" id="membrane">
+      <div class="stage">
+        <div class="desk" aria-label="One pass, drawn as windows">
+          <article class="win">
+            <header>passes.jsonl</header>
+            <div class="body">
+              <p>The notebook is blue.</p>
+              <p class="dim">Catering is at noon.</p>
+              <p class="dim">superseded lines stay</p>
+            </div>
+          </article>
+          <article class="win">
+            <header>rank</header>
+            <div class="body">
+              <p>notebook&nbsp;&nbsp;1</p>
+              <p>catering&nbsp;&nbsp;0</p>
+              <p class="dim">word overlap</p>
+            </div>
+          </article>
+          <article class="win">
+            <header>session 0.1.0</header>
+            <div class="body">
+              <p id="when">2026</p>
+              <p class="dim">budget 2000</p>
+            </div>
+          </article>
+          <article class="win span2">
+            <header>workspace</header>
+            <div class="body">
+              <table>
+                <tr><td>sent</td><td>The notebook is blue.</td></tr>
+                <tr><td>unsent</td><td>Catering is at noon.</td></tr>
+                <tr><td>reply</td><td>The notebook is blue.</td></tr>
+              </table>
+            </div>
+          </article>
+          <article class="win">
+            <header>lock</header>
+            <div class="body">
+              <p>Value lock held this reply.</p>
+              <p class="dim">the held text is not stored</p>
+            </div>
+          </article>
+        </div>
+        <div class="statement">
+          <h2>What Fits Is Sent. What It Keeps Is Written Here.</h2>
+        </div>
+      </div>
+    </section>
+
+    <section class="prose">
+      <div class="split">
+        <div>
+          <p class="label">the call</p>
+          <p>A model answers inside one call. When the call ends, that window is gone. AngularAI does not grow the window, and it does not change the vendor’s weights.</p>
+        </div>
+        <div>
+          <p class="label">the file</p>
+          <p>AngularAI sits in front of the API you already use. Each call is packed to a fixed budget. What the agent has learned stays in a file on the machine that asked. The plasticity is the cortex.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="claims">
+      <article class="claim">
+        <h3>On disk</h3>
+        <p>Traces and episodes. A superseded line stays in the file and leaves the workspace. A failed call writes the episode and no traces.</p>
+      </article>
+      <article class="claim">
+        <h3>A budget</h3>
+        <p>Four characters to one token, rounded up. AngularAI enforces that estimate. The file may outgrow it. The call may not.</p>
+      </article>
+      <article class="claim">
+        <h3>A lock</h3>
+        <p>A phrase you forbid, or a secret in the reply, holds it. You see one sentence. The held text is not stored. A secret in the input is refused before the call.</p>
+      </article>
+    </section>
+
+    <section class="pass">
+      <div>
+        <p class="label">one pass</p>
+        <h2>The rest can return when a question shares its words.</h2>
+      </div>
+      <article class="win">
+        <header>recall</header>
+        <div class="body">
+          <table>
+            <tr><td>asked</td><td>What color is the notebook?</td></tr>
+            <tr><td>found</td><td>The notebook is blue.</td></tr>
+            <tr><td>missed</td><td>What shade is it?</td></tr>
+          </table>
+          <p class="dim note">Lexical attention. Paraphrase waits.</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="install" id="install">
+      <h2>Install</h2>
+      <article class="term command">
+        <header>
+          <span>terminal</span>
+          <button type="button" id="copy">Copy</button>
+        </header>
+        <div class="body">
+          <p id="cmd">uv tool install git+https://github.com/steamacc063-dot/AngularAI.git<br>angularai</p>
+        </div>
+      </article>
+      <p class="label after">Then wire the API you already have. The key stays in the environment.</p>
+    </section>
+
+    <section class="faq" id="questions">
+      <h2>Questions</h2>
+      <details>
+        <summary>Is AngularAI a model?</summary>
+        <p>No. It is a cortex in front of a model API. OpenAI, Anthropic, or a compatible endpoint. The vendor’s weights do not change.</p>
+      </details>
+      <details>
+        <summary>What does the model see?</summary>
+        <p>A workspace that fits the budget: the traces and episodes that share words with the question, and nothing else. The rest stays on disk.</p>
+      </details>
+      <details>
+        <summary>Where does the memory live?</summary>
+        <p>In <span class="label">~/.angularai/default</span>, readable only by you. The key is not a field in the cortex.</p>
+      </details>
+      <details>
+        <summary>Does clearing the screen forget?</summary>
+        <p>No. <span class="label">/clear</span> clears the screen. The cortex stays on disk.</p>
+      </details>
+      <details>
+        <summary>What comes back later?</summary>
+        <p>“What color is the notebook?” finds “The notebook is blue.” “What shade is it?” does not, until a later version embeds traces.</p>
+      </details>
+    </section>
+  </main>
+
+  <footer>
+    <p>AngularAI · Teodor Walter Vido · 2026</p>
+    <nav aria-label="Footer">
+      <a href="angularai.pdf">Paper</a>
+      <a href="https://github.com/steamacc063-dot/AngularAI">GitHub</a>
+    </nav>
+  </footer>
+  <script>
+    const when = document.getElementById("when");
+    const stamp = new Date();
+    when.textContent = stamp.toLocaleDateString(undefined, {
+      weekday: "long", year: "numeric", month: "short", day: "numeric"
+    });
+    const copy = document.getElementById("copy");
+    copy.addEventListener("click", async () => {
+      const text = "uv tool install git+https://github.com/steamacc063-dot/AngularAI.git\nangularai\n";
+      try {
+        await navigator.clipboard.writeText(text);
+        copy.textContent = "Copied";
+      } catch (err) {
+        copy.textContent = "Select it";
+      }
+    });
+  </script>
 </body>
 </html>

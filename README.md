@@ -45,7 +45,7 @@ To put the command on your PATH:
 uv tool install --editable .
 ```
 
-The short paper is `docs/angularai.pdf`. Rebuild it with `uv run python docs/build_paper.py`.
+The site is [steamacc063-dot.github.io/AngularAI](https://steamacc063-dot.github.io/AngularAI/). The short paper is `docs/angularai.pdf`. Rebuild it with `uv run python docs/build_paper.py`.
 
 ## Use
 
