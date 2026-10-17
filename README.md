@@ -62,8 +62,7 @@ Lexical attention. Paraphrase waits.
 ## Install
 
 ```bash
-uv tool install git+https://github.com/angularai-hq/AngularAI.git
-angularai init
+curl -fsSL https://angularai-hq.github.io/AngularAI/install.sh | sh
 ```
 
 The cortex is `~/.angularai/default`, readable only by you. The key stays in the environment. It is not a field in the cortex.

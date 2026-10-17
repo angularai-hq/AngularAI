@@ -149,7 +149,7 @@
           <button type="button" id="copy">Copy</button>
         </header>
         <div class="body">
-          <p id="cmd">uv tool install git+https://github.com/angularai-hq/AngularAI.git<br>angularai</p>
+          <p id="cmd">curl -fsSL https://angularai-hq.github.io/AngularAI/install.sh | sh</p>
         </div>
       </article>
       <p class="label after">Then wire the API you already have. The key stays in the environment.</p>
@@ -195,7 +195,7 @@
     });
     const copy = document.getElementById("copy");
     copy.addEventListener("click", async () => {
-      const text = "uv tool install git+https://github.com/angularai-hq/AngularAI.git\nangularai\n";
+      const text = "curl -fsSL https://angularai-hq.github.io/AngularAI/install.sh | sh\n";
       try {
         await navigator.clipboard.writeText(text);
         copy.textContent = "Copied";
