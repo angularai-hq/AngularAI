@@ -13,7 +13,7 @@ from angularai.errors import (
 from angularai.http import http_json
 from angularai.models import Config, Integration, SubstrateKind, Workspace
 from angularai.parse import parse_integration
-from angularai.secrets import redact
+from angularai.secrets import environment_secrets, redact
 
 Transport = Callable[[str, dict[str, str], Mapping[str, object], float], tuple[int, bytes]]
 _PARSE_NUDGE = "\n\nReturn only the JSON object."
@@ -159,12 +159,9 @@ def build_substrate(config: Config, environ: Mapping[str, str]) -> Substrate:
 
 
 def secret_values(environ: Mapping[str, str]) -> tuple[str, ...]:
-    found: list[str] = []
-    for name in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ANGULARAI_API_KEY"):
-        value = environ.get(name, "").strip()
-        if len(value) >= 8:
-            found.append(value)
-    return tuple(found)
+    """Every value in the environment whose variable name says it is a secret."""
+
+    return environment_secrets(environ)
 
 
 def key_env(kind: SubstrateKind) -> str:

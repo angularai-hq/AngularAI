@@ -5,6 +5,7 @@ from angularai.assemble import SYSTEM, assemble
 from angularai.errors import InputRejected, SubstrateError
 from angularai.lock import Thinker, ValueLock
 from angularai.models import (
+    Action,
     Integration,
     Outcome,
     PassRecord,
@@ -26,7 +27,10 @@ def pass_turn(
     user_text: str,
     secrets: tuple[str, ...] = (),
     system: str | None = None,
+    record: str | None = None,
 ) -> TurnResult:
+    """One pass. record, when given, is what the log keeps in place of the input."""
+
     text = user_text.strip()
     if not text:
         raise InputRejected("Say something first.")
@@ -43,22 +47,28 @@ def pass_turn(
     try:
         integration = substrate.integrate(workspace)
     except SubstrateError as exc:
-        store.append_pass(_error_pass(text, workspace, exc, secrets))
+        store.append_pass(_error_pass(text if record is None else record, workspace, exc, secrets))
         raise
 
+    kept = text if record is None else record
     lock = ValueLock()
-    verdict = lock.judge(integration.reply, config.forbid, secrets)
+    act = () if integration.act is None else _act_texts(integration.act)
+    verdict = lock.judge(integration.reply, config.forbid, secrets, act)
     reply = Thinker(lock).release(verdict)
     if not verdict.allowed:
-        store.append_pass(_held_pass(text, reply, workspace, secrets))
+        store.append_pass(_held_pass(kept, reply, workspace, secrets))
         return TurnResult(reply, True, workspace.estimated_tokens, workspace.budget, None)
 
     drafts = tuple(
         draft for draft in integration.remember if not contains_secret(draft.text, secrets)
     )
-    store.append_pass(_ok_pass(text, reply, drafts, integration, workspace, secrets))
-    return TurnResult(
-        reply, False, workspace.estimated_tokens, workspace.budget, integration.act
+    store.append_pass(_ok_pass(kept, reply, drafts, integration, workspace, secrets))
+    return TurnResult(reply, False, workspace.estimated_tokens, workspace.budget, integration.act)
+
+
+def _act_texts(act: Action) -> tuple[str, ...]:
+    return tuple(
+        part for part in (act.path, act.query, act.old, act.new, act.text, act.command) if part
     )
 
 
