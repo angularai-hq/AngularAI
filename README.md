@@ -1,12 +1,63 @@
-# AngularAI
+<p align="center">
+  <img src="docs/logo.png" alt="AngularAI" width="280">
+</p>
 
-![AngularAI](docs/logo.png)
+<p align="center"><code>not a new model</code></p>
 
-A cortex in front of the model you already call.
+<h1 align="center">A Cortex In Front Of The Model You Already Call</h1>
 
-The call ends. The file does not. AngularAI sits in front of an API you already wire, and each pass sends only what fits a fixed budget. What the agent learns stays on disk. The vendor’s weights do not change.
+<p align="center">
+  The call ends. The file does not.<br>
+  <a href="https://angularai-hq.github.io/AngularAI/">The site</a>
+  &nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="docs/angularai.pdf">The paper</a>
+</p>
 
-The layer names come from Thameleon's CLASP model. The hardware stays hardware.
+```text
+angularai 0.1.0
+The notebook is blue.
+On disk. The model sees what fits.
+```
+
+## What fits is sent. What it keeps is written here.
+
+<table>
+<tr>
+<td width="33%" valign="top">
+
+### On disk
+
+Traces and episodes. A superseded line stays in the file and leaves the workspace. A failed call writes the episode and no traces.
+
+</td>
+<td width="33%" valign="top">
+
+### A budget
+
+Four characters to one token, rounded up. AngularAI enforces that estimate. The file may outgrow it. The call may not.
+
+</td>
+<td width="33%" valign="top">
+
+### A lock
+
+A phrase you forbid, or a secret in the reply, holds it. You see one sentence. The held text is not stored.
+
+</td>
+</tr>
+</table>
+
+The layer names come from Thameleon's CLASP model. The hardware stays hardware. The vendor’s weights do not change.
+
+## One pass
+
+| | |
+| --- | --- |
+| asked | What color is the notebook? |
+| found | The notebook is blue. |
+| missed | What shade is it? |
+
+Lexical attention. Paraphrase waits.
 
 ## Install
 
@@ -15,7 +66,7 @@ uv tool install git+https://github.com/angularai-hq/AngularAI.git
 angularai init
 ```
 
-The cortex is created at `~/.angularai/default`, readable only by you. The key is read from the environment when you speak. It is not written into the cortex.
+The cortex is `~/.angularai/default`, readable only by you. The key stays in the environment. It is not a field in the cortex.
 
 ```bash
 export OPENAI_API_KEY=...
@@ -28,59 +79,79 @@ export ANGULARAI_API_KEY=local
 angularai wire compatible --model <model> --base-url http://127.0.0.1:11434/v1
 ```
 
-From a checkout, `uv sync` then `uv run angularai` does the same. `uv tool install --editable .` puts the command on your PATH.
-
-The site is [angularai-hq.github.io/AngularAI](https://angularai-hq.github.io/AngularAI/). The paper is `docs/angularai.pdf`.
+From a checkout, `uv sync` then `uv run angularai`. `uv tool install --editable .` puts the command on your PATH.
 
 ## Speak
 
 ```bash
 angularai say "I have a blue notebook."
 angularai say "What color is the notebook?"
-angularai recall "notebook"
+angularai
 ```
 
-`angularai` in a terminal is the session: a transcript, a composer, and a status line. `/` opens the commands. `/clear` clears the screen. The cortex stays on disk. `angularai say` prints only the reply.
-
-"What color is the notebook?" finds "The notebook is blue." "What shade is it?" does not, until a later version embeds traces.
+`angularai` in a terminal is the session. `/` opens the commands. `/clear` clears the screen. The cortex stays on disk. `angularai say` prints only the reply.
 
 ## Work
 
 ```bash
 angularai agent "make the failing test pass"
-angularai agent --root ~/src/app --steps 12 "rename the command"
 ```
 
-The agent works inside one directory. One tool a pass: `list`, `read`, `search`, `edit`, `write`, or `run`. `run` starts a program there, with no shell. A path that leaves the directory is refused, including a symlink. A secret in a file is redacted before the next pass. The step budget is 8, and 24 is the most. The reply is the only line on stdout. The steps are on stderr.
+One tool a pass, inside one directory: `list`, `read`, `search`, `edit`, `write`, `run`. `run` starts a program there, with no shell. A path that leaves the directory is refused, including a symlink. A secret in a file is redacted before the next pass. The step budget is 8. The reply is the only line on stdout.
 
-The membrane still holds. The model does not receive the tree. It receives the task, the last tool, and the traces that fit.
+```text
+passes.jsonl          rank                 workspace
+The notebook is blue. notebook  1          sent    The notebook is blue.
+Catering is at noon.  catering  0          unsent  Catering is at noon.
+```
 
-## The membrane
+The model does not receive the tree. It receives the task, the last tool, and the traces that fit.
 
-The estimate is four characters to one token. AngularAI enforces it.
+`--cortex PATH` can sit anywhere on the command. `ANGULARAI_CORTEX` does the same.
 
-1. A secret in the input is refused. Nothing is written.
-2. Attention ranks traces and episodes against the input by word overlap.
-3. The workspace takes the matches that fit, then the latest episode if it still fits.
-4. That text, and only that text, is sent.
-5. The value lock judges the reply. A forbidden phrase, or a secret, holds it.
-6. A completed pass may write traces. A failed call writes none. A superseded trace stays on disk and leaves the workspace.
+## Questions
 
-`--cortex PATH` can be placed anywhere on the command. `ANGULARAI_CORTEX` does the same.
+<details>
+<summary>Is AngularAI a model?</summary>
 
-## What a failure looks like
+No. It is a cortex in front of a model API. OpenAI, Anthropic, or a compatible endpoint. The vendor’s weights do not change.
 
-- No cortex yet: `angularai init`.
-- No key: the missing variable is named. The value is never printed.
-- The API is down, or the reply is not the JSON object AngularAI asked for: nothing new is remembered.
-- The input is over the budget: it is not sent.
-- The reply contains a lock phrase or a secret: you see `Value lock held this reply.` The held text is not stored. A held reply does not run a tool.
-- The model names a trace it was not shown: that trace is not superseded.
-- The step budget is spent: the last reply is printed, and the cortex keeps that pass.
+</details>
 
-## What waits
+<details>
+<summary>What does the model see?</summary>
 
-Paraphrase recall, and more than one cortex talking.
+A workspace that fits the budget: the traces and episodes that share words with the question, and nothing else. The rest stays on disk.
+
+</details>
+
+<details>
+<summary>Where does the memory live?</summary>
+
+In `~/.angularai/default`, readable only by you. The key is not written there.
+
+</details>
+
+<details>
+<summary>Does clearing the screen forget?</summary>
+
+No. `/clear` clears the screen. The cortex stays on disk.
+
+</details>
+
+<details>
+<summary>What comes back later?</summary>
+
+“What color is the notebook?” finds “The notebook is blue.” “What shade is it?” does not, until a later version embeds traces.
+
+</details>
+
+<details>
+<summary>What does a failure look like?</summary>
+
+No cortex yet: `angularai init`. No key: the missing variable is named, and the value is never printed. The API is down, or the reply is not the JSON object AngularAI asked for: nothing new is remembered. The input is over the budget: it is not sent. A lock phrase or a secret in the reply: you see `Value lock held this reply.` The held text is not stored, and a held reply does not run a tool. A trace the model was not shown is not superseded. When the step budget is spent, the last reply is printed and the cortex keeps that pass.
+
+</details>
 
 ## Verify
 
