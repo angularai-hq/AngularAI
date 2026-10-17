@@ -1,6 +1,7 @@
 import asyncio
 import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -230,6 +231,10 @@ async def _clears(store: Store) -> None:
         await _until(pilot, "No locks yet")
 
 
+# A deadline, not a count of pauses. Coverage tracing slows the reveal.
+_WAIT = 10.0
+
+
 async def _arrives(store: Store, reply: str) -> None:
     app = AngularApp(store, lambda _store, _text: reply)
     async with app.run_test(size=(88, 24)) as pilot:
@@ -238,7 +243,8 @@ async def _arrives(store: Store, reply: str) -> None:
         await pilot.press("enter")
         await _until(pilot, reply)
         body = app.query(Block)[-1].query_one(".body", Static)
-        for _ in range(40):
+        deadline = time.monotonic() + _WAIT
+        while time.monotonic() < deadline:
             await pilot.pause(0.05)
             if str(body.content) == reply:
                 return
@@ -254,7 +260,8 @@ async def _sees(store: Store, needle: str) -> None:
 
 
 async def _until(pilot: Pilot, needle: str) -> None:
-    for _ in range(40):
+    deadline = time.monotonic() + _WAIT
+    while time.monotonic() < deadline:
         await pilot.pause(0.05)
         if any(needle in block.body_text for block in pilot.app.query(Block)):
             return

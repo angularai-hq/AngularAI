@@ -16,9 +16,7 @@ from angularai.store import Store
 
 Speaker = Callable[[Store, str], str]
 _REPLAY = 12
-_EMPTY = (
-    "The cortex is empty.\nSay something. What fits is sent. What it keeps is written here."
-)
+_EMPTY = "The cortex is empty.\nSay something. What fits is sent. What it keeps is written here."
 _FAILED = "The pass failed. Nothing new was written."
 _FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 _REVEAL_AT = 48
@@ -138,12 +136,24 @@ Block {
 
 class Block(Vertical):
     def __init__(
-        self, role: str, body: str, *, note: bool = False, shown: str | None = None
+        self,
+        role: str,
+        body: str,
+        *,
+        note: bool = False,
+        shown: str | None = None,
+        arrived: Callable[["Block"], None] | None = None,
     ) -> None:
         super().__init__(classes="note" if note else "said")
         self.role_text = role
         self.body_text = body
         self._shown = body if shown is None else shown
+        self._arrived = arrived
+
+    def on_mount(self) -> None:
+        # The arrival waits for the mount. A slow mount used to drop the reveal.
+        if self._arrived is not None:
+            self.call_after_refresh(self._arrived, self)
 
     def compose(self) -> ComposeResult:
         yield Static(self.role_text, classes="role", markup=False)
@@ -256,9 +266,7 @@ class AngularApp(App[None]):
         field.cursor_position = len(field.value)
 
     def _take(self, text: str) -> None:
-        action, payload = session_command(
-            self._store, text, cortex_status(self._store, os.environ)
-        )
+        action, payload = session_command(self._store, text, cortex_status(self._store, os.environ))
         if action == "quit":
             self.exit()
             return
@@ -328,13 +336,12 @@ class AngularApp(App[None]):
         empty = self.query("#empty")
         if empty:
             empty.first().remove()
-        block = Block(role, body, note=note, shown="" if reveal else None)
+        arrived = partial(self._arrive, motion=motion, reveal=reveal) if motion or reveal else None
+        block = Block(role, body, note=note, shown="" if reveal else None, arrived=arrived)
         transcript = self.query_one("#transcript", VerticalScroll)
         if motion:
             block.styles.opacity = 0.0
         transcript.mount(block)
-        if motion or reveal:
-            self.call_after_refresh(partial(self._arrive, block, motion=motion, reveal=reveal))
         if motion:
             transcript.scroll_end(animate=True, duration=0.12)
         else:
