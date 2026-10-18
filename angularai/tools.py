@@ -260,13 +260,13 @@ def _refuse(root: Path, argv: list[str]) -> str | None:
 
 
 def _arg_inside(root: Path, part: str) -> bool:
-    if ".." in Path(part).parts:
+    if "\x00" in part or ".." in Path(part).parts:
         return False
     candidate = Path(part)
     target = candidate if candidate.is_absolute() else root / candidate
     try:
         return target.resolve().is_relative_to(root)
-    except (OSError, RuntimeError):
+    except (OSError, RuntimeError, ValueError):
         return False
 
 
@@ -342,18 +342,24 @@ def _stays(root: Path, item: Path) -> bool:
 
     try:
         return item.resolve().is_relative_to(root)
-    except (OSError, RuntimeError):
+    except (OSError, RuntimeError, ValueError):
         return False
 
 
 def _inside(root: Path, raw: str) -> Path | None:
-    if not raw.strip():
+    """raw resolved, every link followed, when that is inside root. Else None.
+
+    A path that cannot be resolved (a NUL byte, a link loop on some Pythons) is
+    outside.
+    """
+
+    if not raw.strip() or "\x00" in raw:
         return None
     candidate = Path(raw)
-    if candidate.is_absolute():
-        target = candidate.resolve()
-    else:
-        target = (root / candidate).resolve()
+    try:
+        target = (candidate if candidate.is_absolute() else root / candidate).resolve()
+    except (OSError, RuntimeError, ValueError):
+        return None
     if not target.is_relative_to(root):
         return None
     return target

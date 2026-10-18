@@ -157,11 +157,11 @@ def _upgrade(root: Path, path: Path) -> None:
 def _read_payload(path: Path) -> dict[object, object]:
     try:
         raw = path.read_text(encoding="utf-8")
-    except OSError as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         raise ConfigError(f"The cortex config at {path} cannot be read.") from exc
     try:
         payload: object = json.loads(raw)
-    except json.JSONDecodeError as exc:
+    except (ValueError, RecursionError) as exc:
         raise ConfigError("The cortex config is not valid JSON. It was not modified.") from exc
     if not isinstance(payload, dict):
         raise ConfigError("The cortex config is not an object. It was not modified.")
@@ -232,9 +232,11 @@ class Store:
             good: list[bytes] = []
             bad: list[bytes] = []
             for number, line in enumerate(raw.split(b"\n"), start=1):
-                if not line.strip():
+                if not line:
                     continue
-                if _parse(line, number) is None:
+                if not line.strip():
+                    good.append(line)  # whitespace is skipped on read, and kept
+                elif _parse(line, number) is None:
                     bad.append(line)
                 else:
                     good.append(line)
@@ -244,7 +246,7 @@ class Store:
                 atomic_write(path, b"".join(line + b"\n" for line in good))
         self._reset()
         self._warned = False
-        return Repair(moved=len(bad), kept=len(good))
+        return Repair(moved=len(bad), kept=sum(1 for line in good if line.strip()))
 
     def _reset(self) -> None:
         self._offset = 0
@@ -462,7 +464,7 @@ def _pass_json(record: PassRecord) -> dict[str, object]:
 def _pass_from_line(line: str, number: int) -> PassRecord:
     try:
         payload: object = json.loads(line)
-    except json.JSONDecodeError as exc:
+    except (ValueError, RecursionError) as exc:
         raise LogDamaged(f"The cortex log is damaged at line {number}.") from exc
     if not isinstance(payload, dict):
         raise LogDamaged(f"The cortex log is damaged at line {number}.")

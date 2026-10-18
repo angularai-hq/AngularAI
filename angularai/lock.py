@@ -49,21 +49,49 @@ class Thinker:
 
 
 def normalize(text: str) -> str:
-    """NFKC, no format characters (zero-width and kin), one space for any run."""
+    """No format characters (zero-width and kin), NFKC, one space for any run.
 
-    folded = unicodedata.normalize("NFKC", text)
-    visible = "".join(ch for ch in folded if unicodedata.category(ch) != "Cf")
-    return _SPACE.sub(" ", visible).strip()
+    Dropping a format character can bring a letter and its accent together, so the
+    steps repeat until the text stops changing. normalize(normalize(x)) == normalize(x).
+    """
+
+    folded = text
+    for _ in range(4):
+        visible = "".join(ch for ch in folded if unicodedata.category(ch) != "Cf")
+        again = _SPACE.sub(" ", unicodedata.normalize("NFKC", visible)).strip()
+        if again == folded:
+            break
+        folded = again
+    return folded
 
 
 _SPACE = re.compile(r"\s+")
+
+# Cyrillic and Greek letters drawn like Latin ones. NFKC keeps them apart; the lock
+# does not. Both the phrase and the reply are folded, so a phrase in Cyrillic still
+# matches Cyrillic. The cost is a rare extra hold: a Latin word drawn the same as a
+# locked Cyrillic one.
+_LOOKALIKE = str.maketrans(
+    "аеорсухіјѕԁһԛԝӏАВЕКМНОРСТУХІЈЅΑΒΕΖΗΙΚΜΝΟΡΤΥΧοινκρυα",
+    "aeopcyxijsdhqwlABEKMHOPCTYXIJSABEZHIKMNOPTYXoivkpua",
+)
+
+
+def _skeleton(text: str) -> str:
+    return normalize(text).translate(_LOOKALIKE).casefold().translate(_LOOKALIKE)
 
 
 def _forbidden(text: str, forbid: tuple[str, ...]) -> bool:
     if not forbid:
         return False
     seen = normalize(text).casefold()
-    return any(normalize(phrase).casefold() in seen for phrase in forbid if phrase.strip())
+    drawn = _skeleton(text)
+    for phrase in forbid:
+        if not phrase.strip():
+            continue
+        if normalize(phrase).casefold() in seen or _skeleton(phrase) in drawn:
+            return True
+    return False
 
 
 def _secret(text: str, secrets: tuple[str, ...]) -> bool:

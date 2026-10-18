@@ -81,8 +81,34 @@ def looks_secret(text: str) -> bool:
 
 
 def redact(text: str, secrets: tuple[str, ...]) -> str:
+    """Every secret replaced by [redacted]. Redacting the result again changes nothing.
+
+    A marker next to the remaining text can spell a secret again (a secret
+    ``d]abcdef`` in ``d]abcdefabcdef`` leaves ``[redacted]abcdef``), so the passes
+    repeat until nothing changes. If a secret still shows after that, the whole text
+    is withheld.
+    """
+
+    usable = _usable(secrets)
     redacted = text
-    for secret in _usable(secrets):
+    for _ in range(_ROUNDS):
+        again = _redact_once(redacted, usable)
+        if again == redacted:
+            break
+        redacted = again
+    else:
+        return _REDACTED
+    if any(_literal(secret).search(redacted) for secret in usable):
+        return _REDACTED
+    return redacted
+
+
+_ROUNDS = 8
+
+
+def _redact_once(text: str, secrets: tuple[str, ...]) -> str:
+    redacted = text
+    for secret in secrets:
         redacted = _literal(secret).sub(_REDACTED, redacted)
     redacted = _KEYS.sub(_REDACTED, redacted)
     redacted = _ASSIGNMENT.sub(_value_redactor, redacted)
