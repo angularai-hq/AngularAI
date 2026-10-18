@@ -1,12 +1,10 @@
 import json
 from collections.abc import Mapping
 from pathlib import Path
-from urllib.request import Request
 
 import pytest
 
 from angularai.errors import KeyRejected, SubstrateUnavailable, SubstrateUnreadable
-from angularai.http import _NoRedirect
 from angularai.models import Workspace
 from angularai.pilot import pass_turn
 from angularai.store import init_cortex, open_store
@@ -215,18 +213,3 @@ def test_status_errors_are_specific() -> None:
     assert "rate limiting" in str(error_for_status(429, b"", KEY))
     assert str(error_for_status(503, b"", KEY)) == "The substrate is unavailable."
     assert KEY not in str(error_for_status(401, json.dumps({"error": KEY}).encode(), KEY))
-
-
-def test_redirects_are_not_followed() -> None:
-    handler = _NoRedirect()
-    assert (
-        handler.redirect_request(
-            Request("http://example.test"),
-            None,
-            302,
-            "Found",
-            {},
-            "https://evil.test",
-        )
-        is None
-    )

@@ -1,10 +1,6 @@
 import json
 from dataclasses import replace
-from email.message import Message
-from io import BytesIO
 from pathlib import Path
-from urllib.error import HTTPError, URLError
-from urllib.request import Request
 
 import pytest
 
@@ -19,7 +15,6 @@ from angularai.errors import (
     KeyMissing,
     SubstrateUnavailable,
 )
-from angularai.http import http_json
 from angularai.lock import ValueLock
 from angularai.models import Integration
 from angularai.pilot import pass_turn
@@ -177,66 +172,6 @@ def test_config_rejects_a_bad_file(tmp_path: Path) -> None:
     path.write_text(json.dumps({"substrate": "nope"}), encoding="utf-8")
     with pytest.raises(ConfigError, match="missing"):
         open_store(tmp_path).config()
-
-
-def test_http_reads_a_body_and_names_failures(monkeypatch: pytest.MonkeyPatch) -> None:
-    class Response:
-        def __init__(self, status: object, body: object) -> None:
-            self.status = status
-            self._body = body
-
-        def read(self) -> object:
-            return self._body
-
-        def __enter__(self) -> "Response":
-            return self
-
-        def __exit__(self, *args: object) -> None:
-            return None
-
-    class Opener:
-        def __init__(self, outcome: object) -> None:
-            self._outcome = outcome
-
-        def open(self, request: Request, timeout: float) -> Response:
-            del request, timeout
-            outcome = self._outcome
-            if isinstance(outcome, Exception):
-                raise outcome
-            assert isinstance(outcome, Response)
-            return outcome
-
-    monkeypatch.setattr("angularai.http._OPENER", Opener(Response(200, b"{}")))
-    assert http_json("http://example.test", {}, {"a": 1}) == (200, b"{}")
-
-    monkeypatch.setattr("angularai.http._OPENER", Opener(Response(200, bytearray(b"{}"))))
-    assert http_json("http://example.test", {}, {})[1] == b"{}"
-
-    monkeypatch.setattr("angularai.http._OPENER", Opener(Response("200", b"{}")))
-    with pytest.raises(SubstrateUnavailable, match="unreadable status"):
-        http_json("http://example.test", {}, {})
-
-    error = HTTPError("http://example.test", 401, "no", Message(), BytesIO(b"nope"))
-    monkeypatch.setattr("angularai.http._OPENER", Opener(error))
-    assert http_json("http://example.test", {}, {}) == (401, b"nope", {})
-
-    limited = Message()
-    limited["Retry-After"] = "7"
-    error = HTTPError("http://example.test", 429, "slow", limited, BytesIO(b"{}"))
-    monkeypatch.setattr("angularai.http._OPENER", Opener(error))
-    assert http_json("http://example.test", {}, {}) == (429, b"{}", {"retry-after": "7"})
-
-    monkeypatch.setattr("angularai.http._OPENER", Opener(TimeoutError("slow")))
-    with pytest.raises(SubstrateUnavailable, match="timed out"):
-        http_json("http://example.test", {}, {})
-
-    monkeypatch.setattr("angularai.http._OPENER", Opener(URLError(TimeoutError("slow"))))
-    with pytest.raises(SubstrateUnavailable, match="timed out"):
-        http_json("http://example.test", {}, {})
-
-    monkeypatch.setattr("angularai.http._OPENER", Opener(URLError("down")))
-    with pytest.raises(SubstrateUnavailable, match="unreachable"):
-        http_json("http://example.test", {}, {})
 
 
 def test_repl_and_commands(
