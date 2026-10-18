@@ -1,7 +1,18 @@
-import json
-import os
-from pathlib import Path
+"""The cortex on disk: cortex.json and passes.jsonl.
 
+Durability, repair, and versioning are documented in the README under "On disk".
+Writes go through angularai.durable: atomic replace for whole files, one locked,
+fsynced line per pass for the log.
+"""
+
+import hashlib
+import json
+from collections.abc import Callable
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Literal
+
+from angularai.durable import append_line, atomic_write, fsync_dir, locked
 from angularai.errors import ConfigError, CortexExists, LogDamaged, NoCortex
 from angularai.models import (
     Config,
@@ -15,6 +26,15 @@ from angularai.models import (
 )
 from angularai.urls import validate_base_url
 
+# The layout this code writes. A cortex without a version field is version 1.
+SCHEMA_VERSION = 1
+Migration = Callable[[dict[str, object]], dict[str, object]]
+# MIGRATIONS[n] turns a version-n config into version n + 1. Version 1 is current,
+# so there is nothing to run yet. migrate() is the hook every open goes through.
+MIGRATIONS: dict[int, Migration] = {}
+
+LOG = "passes.jsonl"
+CORRUPT = "passes.jsonl.corrupt"
 _CONFIG_FIELDS = frozenset(
     {
         "substrate",
@@ -26,9 +46,24 @@ _CONFIG_FIELDS = frozenset(
         "json_mode",
     }
 )
+_OPTIONAL_FIELDS = frozenset({"version"})
 _OUTCOMES = frozenset({"ok", "held", "error"})
 _MIN_BUDGET = 256
 _MAX_BUDGET = 32000
+
+Warn = Callable[[str], None]
+
+
+@dataclass(frozen=True)
+class Damage:
+    line: int
+    kind: Literal["unreadable", "torn"]
+
+
+@dataclass(frozen=True)
+class Repair:
+    moved: int
+    kept: int
 
 
 def init_cortex(root: Path) -> None:
@@ -43,15 +78,18 @@ def init_cortex(root: Path) -> None:
         root.parent.chmod(0o700)
     root.chmod(0o700)
     write_config(root / "cortex.json", default_config())
-    log = root / "passes.jsonl"
+    log = root / LOG
     log.touch()
     log.chmod(0o600)
+    fsync_dir(root)
 
 
-def open_store(root: Path) -> "Store":
-    if not (root / "cortex.json").is_file():
+def open_store(root: Path, warn: Warn | None = None) -> "Store":
+    path = root / "cortex.json"
+    if not path.is_file():
         raise NoCortex(f"No cortex at {root}. Run angularai init.")
-    return Store(root)
+    _upgrade(root, path)
+    return Store(root, warn)
 
 
 def default_config() -> Config:
@@ -68,14 +106,55 @@ def default_config() -> Config:
 
 def write_config(path: Path, config: Config) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(_config_json(config), indent=2) + "\n", encoding="utf-8")
-    temporary.chmod(0o600)
-    temporary.replace(path)
-    path.chmod(0o600)
+    text = json.dumps(_config_json(config), indent=2) + "\n"
+    atomic_write(path, text.encode("utf-8"))
 
 
 def read_config(path: Path) -> Config:
+    return _config_from(migrate(_read_payload(path))[0])
+
+
+def migrate(payload: dict[object, object]) -> tuple[dict[object, object], int]:
+    """Bring a config payload to SCHEMA_VERSION. Returns it and the version it had."""
+
+    found = payload.get("version", 1)
+    if isinstance(found, bool) or not isinstance(found, int) or found < 1:
+        raise ConfigError("The cortex config field version must be a whole number from 1.")
+    if found > SCHEMA_VERSION:
+        raise ConfigError(
+            f"This cortex is version {found}. This AngularAI reads up to version "
+            f"{SCHEMA_VERSION}. Upgrade angularai. The cortex was not modified."
+        )
+    current: dict[object, object] = dict(payload)
+    version = found
+    while version < SCHEMA_VERSION:
+        step = MIGRATIONS.get(version)
+        if step is None:
+            raise ConfigError(f"No migration from cortex version {version}.")
+        upgraded = step({str(key): value for key, value in current.items()})
+        current = {}
+        current.update(upgraded)
+        version += 1
+    current["version"] = SCHEMA_VERSION
+    return current, found
+
+
+def _upgrade(root: Path, path: Path) -> None:
+    """Write a migrated config back. The old file is kept as cortex.json.v<n>."""
+
+    payload = _read_payload(path)
+    migrated, found = migrate(payload)
+    if found == SCHEMA_VERSION:
+        return
+    _config_from(migrated)
+    with locked(root):
+        raw = path.read_bytes()
+        atomic_write(root / f"cortex.json.v{found}", raw)
+        text = json.dumps({str(k): v for k, v in migrated.items()}, indent=2) + "\n"
+        atomic_write(path, text.encode("utf-8"))
+
+
+def _read_payload(path: Path) -> dict[object, object]:
     try:
         raw = path.read_text(encoding="utf-8")
     except OSError as exc:
@@ -86,7 +165,7 @@ def read_config(path: Path) -> Config:
         raise ConfigError("The cortex config is not valid JSON. It was not modified.") from exc
     if not isinstance(payload, dict):
         raise ConfigError("The cortex config is not an object. It was not modified.")
-    unknown = set(payload) - _CONFIG_FIELDS
+    unknown = set(payload) - _CONFIG_FIELDS - _OPTIONAL_FIELDS
     if unknown:
         name = sorted(str(item) for item in unknown)[0]
         raise ConfigError(f"The cortex config has an unknown field: {name}.")
@@ -94,31 +173,41 @@ def read_config(path: Path) -> Config:
     if missing:
         name = sorted(missing)[0]
         raise ConfigError(f"The cortex config is missing {name}.")
-    return _config_from(payload)
+    return payload
 
 
 class Store:
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, warn: Warn | None = None) -> None:
         self.root = root
+        self._warn = warn
+        self._warned = False
+        self._offset = 0
+        self._lines = 0
+        self._digest = _digest(b"")
+        self._records: list[PassRecord] = []
+        self._damage: list[Damage] = []
+        self._torn: Damage | None = None
 
     def config(self) -> Config:
         return read_config(self.root / "cortex.json")
 
     def save_config(self, config: Config) -> None:
-        write_config(self.root / "cortex.json", config)
+        with locked(self.root):
+            write_config(self.root / "cortex.json", config)
 
     def passes(self) -> tuple[PassRecord, ...]:
-        path = self.root / "passes.jsonl"
-        try:
-            raw = path.read_text(encoding="utf-8")
-        except OSError as exc:
-            raise LogDamaged(f"The cortex log at {path} cannot be read.") from exc
-        records: list[PassRecord] = []
-        for number, line in enumerate(raw.splitlines(), start=1):
-            if not line.strip():
-                continue
-            records.append(_pass_from_line(line, number))
-        return tuple(records)
+        """Every readable pass. A bad line is skipped, kept on disk, and reported once."""
+
+        with locked(self.root, shared=True):
+            self._refresh()
+        if self._warn is not None and not self._warned and self.damage():
+            self._warned = True
+            self._warn(damage_notice(self.damage()))
+        return tuple(self._records)
+
+    def damage(self) -> tuple[Damage, ...]:
+        torn = () if self._torn is None else (self._torn,)
+        return (*self._damage, *torn)
 
     def view(self) -> CortexView:
         return fold(self.passes())
@@ -130,13 +219,99 @@ class Store:
         return records[-1]
 
     def append_pass(self, record: PassRecord) -> None:
-        path = self.root / "passes.jsonl"
         line = json.dumps(_pass_json(record), ensure_ascii=False)
-        with path.open("a", encoding="utf-8") as handle:
-            handle.write(line + "\n")
-            handle.flush()
-            os.fsync(handle.fileno())
-        path.chmod(0o600)
+        with locked(self.root):
+            append_line(self.root / LOG, line.encode("utf-8"))
+
+    def repair(self) -> Repair:
+        """Move every unreadable line to passes.jsonl.corrupt. Nothing is deleted."""
+
+        path = self.root / LOG
+        with locked(self.root):
+            raw = _read_log(path)
+            good: list[bytes] = []
+            bad: list[bytes] = []
+            for number, line in enumerate(raw.split(b"\n"), start=1):
+                if not line.strip():
+                    continue
+                if _parse(line, number) is None:
+                    bad.append(line)
+                else:
+                    good.append(line)
+            if bad:
+                for line in bad:
+                    append_line(self.root / CORRUPT, line)
+                atomic_write(path, b"".join(line + b"\n" for line in good))
+        self._reset()
+        self._warned = False
+        return Repair(moved=len(bad), kept=len(good))
+
+    def _reset(self) -> None:
+        self._offset = 0
+        self._lines = 0
+        self._digest = _digest(b"")
+        self._records = []
+        self._damage = []
+        self._torn = None
+
+    def _refresh(self) -> None:
+        """Parse only what was appended since the last read.
+
+        The whole file is read, but only new lines are parsed. The bytes already
+        parsed are checked by digest, so a log rewritten or edited in place is
+        parsed again from the start.
+        """
+
+        data = _read_log(self.root / LOG)
+        known = self._offset
+        if len(data) < known or _digest(data[:known]) != self._digest:
+            self._reset()
+            known = 0
+        fresh = data[known:]
+        end = fresh.rfind(b"\n") + 1
+        for raw in fresh[:end].split(b"\n")[:-1]:
+            self._lines += 1
+            if not raw.strip():
+                continue
+            parsed = _parse(raw, self._lines)
+            if parsed is None:
+                self._damage.append(Damage(self._lines, "unreadable"))
+            else:
+                self._records.append(parsed)
+        self._offset = known + end
+        self._digest = _digest(data[: self._offset])
+        tail = fresh[end:]
+        self._torn = Damage(self._lines + 1, "torn") if tail.strip() else None
+
+
+def damage_notice(damage: tuple[Damage, ...]) -> str:
+    places = ", ".join(f"{LOG}:{item.line}" for item in damage[:5])
+    more = f" and {len(damage) - 5} more" if len(damage) > 5 else ""
+    torn = " The last line was cut off mid-write." if any(d.kind == "torn" for d in damage) else ""
+    count = len(damage)
+    noun = "line" if count == 1 else "lines"
+    return (
+        f"The cortex log has {count} unreadable {noun}: {places}{more}.{torn} "
+        f"They are skipped and still on disk. angularai repair moves them to {CORRUPT}."
+    )
+
+
+def _read_log(path: Path) -> bytes:
+    try:
+        return path.read_bytes()
+    except OSError as exc:
+        raise LogDamaged(f"The cortex log at {path} cannot be read.") from exc
+
+
+def _digest(data: bytes) -> bytes:
+    return hashlib.blake2b(data, digest_size=16).digest()
+
+
+def _parse(line: bytes, number: int) -> PassRecord | None:
+    try:
+        return _pass_from_line(line.decode("utf-8"), number)
+    except (LogDamaged, UnicodeDecodeError):
+        return None
 
 
 def fold(records: tuple[PassRecord, ...]) -> CortexView:
@@ -170,6 +345,7 @@ def fold(records: tuple[PassRecord, ...]) -> CortexView:
 
 def _config_json(config: Config) -> dict[str, object]:
     return {
+        "version": SCHEMA_VERSION,
         "substrate": config.substrate,
         "model": config.model,
         "base_url": config.base_url,

@@ -146,6 +146,17 @@ In `~/.angularai/default`, readable only by you. The key is not written there.
 </details>
 
 <details>
+<summary>What survives a crash?</summary>
+
+`cortex.json` is written to a temporary file, fsynced, and moved into place. You see the old file or the new one. A pass is one line in `passes.jsonl`, written once and fsynced. Writers take a lock on `.lock` in the cortex, so two processes never mix their lines. The lock is advisory, and on Windows it does nothing.
+
+A line that cannot be read, including a last line cut off mid-write, is skipped. Nothing stops. You are told once which lines, as `passes.jsonl:N`. They stay in the file until you run `angularai repair`, which moves them to `passes.jsonl.corrupt` and keeps the rest. Nothing is deleted.
+
+`cortex.json` carries `version`. A cortex without it is version 1. An older version is migrated when the cortex opens, and the old file is kept as `cortex.json.v<N>`. A newer version is refused and left as it is.
+
+</details>
+
+<details>
 <summary>Does clearing the screen forget?</summary>
 
 No. `/clear` clears the screen. The cortex stays on disk.

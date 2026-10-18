@@ -13,7 +13,7 @@ from angularai.models import SubstrateKind
 from angularai.pilot import pass_turn, screen
 from angularai.present import format_banner, format_locks, format_recall, format_traces
 from angularai.session import cortex_status, session_command
-from angularai.store import Store, init_cortex, open_store
+from angularai.store import CORRUPT, Store, init_cortex, open_store
 from angularai.substrate import build_substrate, key_env, secret_values
 from angularai.tui import run_tui
 
@@ -42,7 +42,9 @@ def _dispatch(args: argparse.Namespace, cortex: Path | None) -> int:
     root = _root(cortex)
     command = args.command
     if command is None:
-        return _open_session(open_store(root))
+        return _open_session(_open(root))
+    if command == "repair":
+        return _repair(root)
     if command == "init":
         return _init(root)
     if command == "wire":
@@ -52,13 +54,13 @@ def _dispatch(args: argparse.Namespace, cortex: Path | None) -> int:
     if command == "agent":
         return _agent(root, args)
     if command == "cortex":
-        print(format_traces(open_store(root).view()))
+        print(format_traces(_open(root).view()))
         return 0
     if command == "recall":
-        print(format_recall(open_store(root).view(), " ".join(args.query)))
+        print(format_recall(_open(root).view(), " ".join(args.query)))
         return 0
     if command == "status":
-        print(_status(open_store(root)))
+        print(_status(_open(root)))
         return 0
     if command == "budget":
         return _budget(root, args.tokens)
@@ -66,6 +68,22 @@ def _dispatch(args: argparse.Namespace, cortex: Path | None) -> int:
         return _lock(root, args)
     print(f"Unknown command {command}.", file=sys.stderr)
     return 2
+
+
+def _open(root: Path) -> Store:
+    return open_store(root, warn=lambda notice: print(notice, file=sys.stderr))
+
+
+def _repair(root: Path) -> int:
+    store = open_store(root)
+    result = store.repair()
+    if result.moved == 0:
+        print(f"The log is clean. {result.kept} passes.")
+        return 0
+    noun = "line" if result.moved == 1 else "lines"
+    moved = f"Moved {result.moved} unreadable {noun} to {store.root / CORRUPT}."
+    print(f"{moved} {result.kept} passes kept.")
+    return 0
 
 
 def _init(root: Path) -> int:
@@ -77,7 +95,7 @@ def _init(root: Path) -> int:
 
 def _wire(root: Path, args: argparse.Namespace) -> int:
     kind = _kind(args.kind)
-    updated = wire(open_store(root), kind, args.model, args.base_url)
+    updated = wire(_open(root), kind, args.model, args.base_url)
     env_name = key_env(kind)
     model = updated.model or args.model
     print(f"Wired {kind} / {model}")
@@ -86,14 +104,14 @@ def _wire(root: Path, args: argparse.Namespace) -> int:
 
 
 def _say(root: Path, text: str) -> int:
-    store = open_store(root)
+    store = _open(root)
     reply = _speak(store, text)
     print(reply)
     return 0
 
 
 def _agent(root: Path, args: argparse.Namespace) -> int:
-    store = open_store(root)
+    store = _open(root)
     directory = Path.cwd() if args.root is None else args.root
     print(f"root  {directory.expanduser().resolve()}", file=sys.stderr)
     print(f"run   {'on' if args.allow_run else 'off'}", file=sys.stderr)
@@ -117,7 +135,7 @@ def _agent(root: Path, args: argparse.Namespace) -> int:
 
 
 def _budget(root: Path, tokens: int | None) -> int:
-    store = open_store(root)
+    store = _open(root)
     if tokens is None:
         print(f"{store.config().workspace_budget} estimated tokens")
         return 0
@@ -127,7 +145,7 @@ def _budget(root: Path, tokens: int | None) -> int:
 
 
 def _lock(root: Path, args: argparse.Namespace) -> int:
-    store = open_store(root)
+    store = _open(root)
     if args.lock_command is None:
         print(format_locks(store.config().forbid))
         return 0
@@ -149,6 +167,7 @@ def _lock(root: Path, args: argparse.Namespace) -> int:
 
 
 def _open_session(store: Store) -> int:
+    store.passes()
     if sys.stdin.isatty() and sys.stdout.isatty():
         return run_tui(store, _speak)
     return _repl(store)
@@ -264,6 +283,7 @@ def _parser() -> argparse.ArgumentParser:
     recall = sub.add_parser("recall", help="Find traces without calling a model.")
     recall.add_argument("query", nargs="+")
     sub.add_parser("status", help="Show the budget and the last pass.")
+    sub.add_parser("repair", help="Move unreadable log lines to passes.jsonl.corrupt.")
 
     budget = sub.add_parser("budget", help="Show or set the workspace budget.")
     budget.add_argument("tokens", nargs="?", type=int)
