@@ -407,7 +407,7 @@ def provider_error(body: bytes) -> tuple[frozenset[str], str]:
 
     try:
         payload: object = json.loads(body)
-    except (json.JSONDecodeError, UnicodeDecodeError):
+    except (ValueError, RecursionError):
         return frozenset(), ""
     if not isinstance(payload, dict):
         return frozenset(), ""
@@ -473,7 +473,7 @@ def _object(body: bytes, secret: str = "", provider: str = "") -> dict[str, obje
         raise BadResponse(f"{the} returned an empty body. Nothing was written.")
     try:
         payload: object = json.loads(body)
-    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+    except (ValueError, RecursionError) as exc:
         raise BadResponse(
             _with(f"{the} returned something that is not JSON.", _snippet(body, secret))
         ) from exc

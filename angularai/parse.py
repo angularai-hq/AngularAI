@@ -23,7 +23,7 @@ def parse_integration(raw: str) -> Integration:
         raise SubstrateUnreadable(_UNREADABLE)
     try:
         payload: object = json.loads(text[start : end + 1])
-    except json.JSONDecodeError as exc:
+    except (ValueError, RecursionError) as exc:
         raise SubstrateUnreadable(_UNREADABLE) from exc
     if not isinstance(payload, dict):
         raise SubstrateUnreadable(_UNREADABLE)

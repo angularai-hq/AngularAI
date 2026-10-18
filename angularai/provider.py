@@ -134,5 +134,6 @@ def wait_before_retry(
         return None
     if isinstance(error, RateLimited) and error.retry_after is not None:
         return error.retry_after if error.retry_after <= policy.max_wait else None
-    ceiling = min(policy.max_wait, policy.base_wait * 2.0 ** (attempt - 1))
+    # The exponent is capped so a large attempt count cannot overflow a float.
+    ceiling = min(policy.max_wait, policy.base_wait * 2.0 ** min(max(attempt - 1, 0), 64))
     return clock.random() * ceiling

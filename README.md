@@ -45,7 +45,7 @@ Four characters to one token, rounded up. AngularAI enforces that estimate. The 
 
 ### A lock
 
-A phrase you forbid, or a secret, in the reply or in the tool it asks for, holds it. Case, width, spacing, and zero-width characters do not hide a phrase. You see one sentence. The held text is not stored.
+A phrase you forbid, or a secret, in the reply or in the tool it asks for, holds it. Case, width, spacing, zero-width characters, and Cyrillic or Greek letters drawn like Latin ones do not hide a phrase. You see one sentence. The held text is not stored.
 
 </td>
 </tr>
@@ -212,5 +212,7 @@ uv build
 ```
 
 CI runs the same five on Linux and macOS, Python 3.12 and 3.13, for every pull request and every push to main. Coverage under 80% fails.
+
+`tests/test_prop_*.py` are Hypothesis properties: the budget, secrets, the lock, the sandbox, the log, and the provider layer. `HYPOTHESIS_PROFILE=ci` runs more examples from a fixed seed, as CI does. The default is `dev`.
 
 The invariant is `tests/test_membrane.py`, and for the agent `tests/test_agent.py`. A fact from the start of a long life is in the workspace, an unrelated episode that would have fit is not, and every call stays inside the budget. The agent reads the file it asked for. The file it did not ask for is not sent.
