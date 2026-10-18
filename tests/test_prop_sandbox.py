@@ -1,5 +1,6 @@
 """Properties of the path sandbox and of run's argument check."""
 
+import errno
 import os
 import tempfile
 from collections.abc import Iterator
@@ -56,6 +57,17 @@ def _outside(root: Path, raw: str) -> bool:
     return not Path(os.path.realpath(target)).is_relative_to(root)
 
 
+def _loops(root: Path, raw: str) -> bool:
+    """A link loop. Python 3.12 cannot resolve one, so the resolver refuses it."""
+
+    target = Path(raw) if Path(raw).is_absolute() else root / raw
+    try:
+        os.stat(target)
+    except OSError as exc:
+        return exc.errno == errno.ELOOP
+    return False
+
+
 @posix
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(raw=raw_paths)
@@ -65,13 +77,15 @@ def _outside(root: Path, raw: str) -> bool:
 @example(raw="out/secret.txt")
 @example(raw="up/outside/secret.txt")
 @example(raw="/etc/passwd")
+@example(raw="loop")
+@example(raw="loop/x")
 def test_the_resolver_never_leaves_the_root(tree: Path, raw: str) -> None:
     found = _inside(tree, raw)
     if found is not None:
         assert found.is_relative_to(tree)
         assert not _outside(tree, raw)
     elif raw.strip() and "\x00" not in raw:
-        assert _outside(tree, raw)
+        assert _outside(tree, raw) or _loops(tree, raw)
 
 
 inside_parts = st.lists(
