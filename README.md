@@ -102,6 +102,10 @@ angularai agent "make the failing test pass"
 
 One tool a pass, inside one directory: `list`, `read`, `search`, `edit`, `write`, `run`. A path that leaves the directory is refused, including a symlink that points out. `list` and `search` skip one. A secret in a file is redacted before the next pass. The log keeps the task and the tool of each step, not what the tool returned. A log written before this version may still hold tool output. Nothing is deleted. The step budget is 8. The reply is the only line on stdout.
 
+A tool's output reaches the model between `BEGIN TOOL OUTPUT` and `END TOOL OUTPUT` markers with a random tag, as data, never as instructions. A malformed tool call is refused, not repaired: a wrong type, an unknown field, or a field over its limit is named back to the model, and nothing runs. A remembered fact is judged like a reply, so a locked phrase or a secret is never kept.
+
+Files are opened one path component at a time without following links, so a path swapped for a link after the check is refused. A read refuses anything but a regular file (a FIFO, a socket, a device) and never blocks on one. It stops at 4 MiB, and a line at 2,000 characters. A file with a NUL in its first 8 KiB, or that is not UTF-8, is binary: only its size is reported. `search` reads at most 1 MiB a file, 16 MiB in all, and stops walking after about 20,000 entries. `list` shows 80 of at most 5,000. A write goes to a new file renamed over the name, keeping its mode, so a hard link to the old file, inside or out, keeps the old content. A read cannot tell a hard link from the file, and follows it. `edit` takes files up to 80,000 bytes.
+
 `run` is off. `--allow-run` turns it on for that command.
 
 ```bash
@@ -110,7 +114,7 @@ angularai agent --allow-run "count the lines in the notes"
 
 With `--allow-run`, `run` starts one program from an allowlist: `basename cat cmp cp cut dirname echo false grep head ls mkdir mv pwd rm rmdir sort stat tail touch true uniq wc`. There is no shell, no interpreter, no `find`, `xargs`, `env`, `git`, or `make`. The program comes from `/usr/bin:/bin`, never from the directory. Every argument that names a path must resolve inside the directory. Options that run a program or follow a link out are refused: `cp -L -H --dereference`, `grep -R --dereference-recursive`, `sort --compress-program`, `--files0-from`. The program starts in the directory with three variables: `PATH=/usr/bin:/bin`, `HOME` set to the directory, and `LANG`. No API key is passed. Output stops at 64 KiB. After 20 seconds the whole process group is killed.
 
-This is a filter on what starts, not an operating-system sandbox. No allowlisted program opens a network connection, but nothing at the OS level blocks one. `rm` and `mv` can delete or move anything inside the directory. `run` needs Linux or macOS.
+This is a filter on what starts, not an operating-system sandbox. No allowlisted program opens a network connection, but nothing at the OS level blocks one. `rm` and `mv` can delete or move anything inside the directory, but not the directory itself. `run` needs Linux or macOS.
 
 ```text
 passes.jsonl          rank                 workspace

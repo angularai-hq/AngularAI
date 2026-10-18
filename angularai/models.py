@@ -34,6 +34,8 @@ class Action:
     command: str = ""
     start: int = 1
     overwrite: bool = False
+    # Why parse refused this act. A refused act is never run; the model is told why.
+    problem: str = ""
 
 
 @dataclass(frozen=True)

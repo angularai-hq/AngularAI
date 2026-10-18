@@ -51,8 +51,11 @@ def pass_turn(
         store.append_pass(_held_pass(kept, reply, workspace, secrets))
         return TurnResult(reply, True, workspace.estimated_tokens, workspace.budget, None)
 
+    # A trace is judged like the reply: a secret or a locked phrase is never remembered.
     drafts = tuple(
-        draft for draft in integration.remember if not contains_secret(draft.text, secrets)
+        draft
+        for draft in integration.remember
+        if lock.judge(draft.text, config.forbid, secrets).allowed
     )
     store.append_pass(_ok_pass(kept, reply, drafts, integration, workspace, secrets))
     return TurnResult(reply, False, workspace.estimated_tokens, workspace.budget, integration.act)

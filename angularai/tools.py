@@ -6,12 +6,19 @@ import subprocess
 import threading
 from pathlib import Path
 
+from angularai import files
 from angularai.models import Action
 from angularai.secrets import redact
 
 _READ_LINES = 160
 _READ_CHARS = 1600
 _LIST_MAX = 80
+_LIST_SCAN = 5000
+_LINE_CHARS = 2000
+_READ_BYTES = 4 * 1024 * 1024
+_SEARCH_FILE = 1024 * 1024
+_SEARCH_BYTES = 16 * 1024 * 1024
+_WALK_MAX = 20000
 _SEARCH_MAX = 30
 _WRITE_MAX = 80_000
 _RESULT = 1600
@@ -59,6 +66,8 @@ _REFUSED_LONG = {
 }
 # Short flags that follow a link out: cp -L and -H, grep -R.
 _REFUSED_SHORT = {"cp": frozenset("LH"), "grep": frozenset("R")}
+# Programs that may delete or move the directory itself when it is named.
+_NOT_THE_ROOT = frozenset({"rm", "rmdir", "mv"})
 
 
 def execute(
@@ -71,7 +80,9 @@ def execute(
 
     root = root.resolve()
     tool = action.tool
-    if tool == "list":
+    if action.problem:
+        result = f"Refused. {action.problem}"
+    elif tool == "list":
         result = _list(root, action.path or ".")
     elif tool == "read":
         result = _read(root, action.path, action.start)
@@ -96,31 +107,47 @@ def _list(root: Path, raw: str) -> str:
         return "That path is not there."
     if not path.is_dir():
         return "That path is a file."
-    names = sorted(
-        (item for item in path.iterdir() if _stays(root, item)), key=lambda item: item.name
-    )
-    lines = [f"{item.name}/" if item.is_dir() else item.name for item in names[:_LIST_MAX]]
-    if len(names) > _LIST_MAX:
-        lines.append(f"... {len(names) - _LIST_MAX} more")
-    return "\n".join(lines) if lines else "(empty)"
+    names: list[str] = []
+    more = False
+    try:
+        with os.scandir(path) as entries:
+            for entry in entries:
+                if len(names) >= _LIST_SCAN:
+                    more = True
+                    break
+                names.append(entry.name)
+    except OSError:
+        return "That directory could not be listed."
+    names.sort()
+    shown: list[str] = []
+    for name in names:
+        if len(shown) >= _LIST_MAX:
+            break
+        item = path / name
+        if _stays(root, item):
+            shown.append(f"{name}/" if item.is_dir() else name)
+    rest = len(names) - len(shown)
+    if rest > 0 or more:
+        shown.append(f"... {rest}{'+' if more else ''} more")
+    return "\n".join(shown) if shown else "(empty)"
 
 
 def _read(root: Path, raw: str, start: int) -> str:
     path = _inside(root, raw)
     if path is None:
         return _leaves()
-    if not path.is_file():
-        return "That path is not a file."
     try:
-        raw_text = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeError):
-        return "That file could not be read as text."
-    if "\x00" in raw_text[:8000]:
-        return "That file is not text."
-    lines = raw_text.splitlines()
+        text, cut = files.read_text(root, path, _READ_BYTES)
+    except files.Refused as refused:
+        return str(refused)
+    lines = text.splitlines()
     begin = max(start, 1) - 1
+    if cut and begin >= len(lines):
+        return f"The file is longer than {_READ_BYTES // (1024 * 1024)} MiB; read stops there."
     chosen = lines[begin : begin + _READ_LINES]
-    body = "\n".join(f"{begin + index + 1}|{line}" for index, line in enumerate(chosen))
+    body = "\n".join(
+        f"{begin + index + 1}|{_clip(line, _LINE_CHARS)}" for index, line in enumerate(chosen)
+    )
     return _clip(body, _READ_CHARS)
 
 
@@ -133,14 +160,17 @@ def _search(root: Path, raw: str, query: str) -> str:
     if not path.exists():
         return "That path is not there."
     hits: list[str] = []
-    files = [path] if path.is_file() else _files(root, path)
-    for file in files:
-        if len(hits) >= _SEARCH_MAX:
+    budget = _SEARCH_BYTES
+    found = [path] if not path.is_dir() else _files(root, path)
+    for file in found:
+        if len(hits) >= _SEARCH_MAX or budget <= 0:
             break
         try:
-            text = file.read_text(encoding="utf-8")
-        except (OSError, UnicodeError):
+            # _files and _inside checked that the target, links followed, stays inside.
+            text, _ = files.read_text(root, file.resolve(), min(_SEARCH_FILE, budget))
+        except (files.Refused, OSError, RuntimeError, ValueError):
             continue
+        budget -= len(text)
         for number, line in enumerate(text.splitlines(), start=1):
             if query not in line:
                 continue
@@ -157,18 +187,23 @@ def _edit(root: Path, raw: str, old: str, new: str) -> str:
     path = _inside(root, raw)
     if path is None:
         return _leaves()
-    if not path.is_file():
-        return "That path is not a file."
     try:
-        text = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeError):
-        return "That file could not be read as text."
-    count = text.count(old)
-    if count == 0:
-        return "That text is not in the file."
-    if count > 1:
-        return f"That text appears {count} times. Make it unique."
-    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+        text, cut = files.read_text(root, path, _WRITE_MAX + 1)
+        if cut or len(text) > _WRITE_MAX:
+            return "That file is too large to edit. Nothing was changed."
+        count = text.count(old)
+        if count == 0:
+            return "That text is not in the file."
+        if count > 1:
+            return f"That text appears {count} times. Make it unique."
+        changed = text.replace(old, new, 1)
+        if len(changed) > _WRITE_MAX:
+            return "That edit makes the file too large. Nothing was changed."
+        files.write_text(root, path, changed, overwrite=True, create=False)
+    except files.Refused as refused:
+        return str(refused)
+    except OSError:
+        return "That file could not be written. Nothing was changed."
     return f"Edited {path.relative_to(root)}."
 
 
@@ -178,12 +213,12 @@ def _write(root: Path, raw: str, text: str, overwrite: bool) -> str:
     path = _inside(root, raw)
     if path is None:
         return _leaves()
-    if path.is_dir():
-        return "That path is a directory."
-    if path.exists() and not overwrite:
-        return "That file exists. Edit it, or set overwrite."
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
+    try:
+        files.write_text(root, path, text, overwrite=overwrite, create=True)
+    except files.Refused as refused:
+        return str(refused)
+    except OSError:
+        return "That file could not be written."
     return f"Wrote {path.relative_to(root)}."
 
 
@@ -239,6 +274,8 @@ def _refuse(root: Path, argv: list[str]) -> str | None:
     if "/" in name or name not in ALLOWED:
         allowed = ", ".join(sorted(ALLOWED))
         return f"Refused {name}. run starts one of: {allowed}."
+    if name in _NOT_THE_ROOT and any(_is_root(root, part) for part in argv[1:]):
+        return "The directory itself is not removed or moved."
     short = _REFUSED_SHORT.get(name, frozenset())
     refused = _REFUSED_LONG.get(name, ())
     for part in argv[1:]:
@@ -257,6 +294,17 @@ def _refuse(root: Path, argv: list[str]) -> str | None:
         elif not _arg_inside(root, part):
             return "That command leaves the directory."
     return None
+
+
+def _is_root(root: Path, part: str) -> bool:
+    if part.startswith("-") or "\x00" in part:
+        return False
+    candidate = Path(part)
+    target = candidate if candidate.is_absolute() else root / candidate
+    try:
+        return target.resolve() == root
+    except (OSError, RuntimeError, ValueError):
+        return False
 
 
 def _arg_inside(root: Path, part: str) -> bool:
@@ -323,8 +371,12 @@ class _Capture:
 
 
 def _files(root: Path, path: Path) -> list[Path]:
+    """Regular files under path, links not followed, at most 400, after at most 20000 entries."""
+
     found: list[Path] = []
+    seen = 0
     for folder, dirs, names in os.walk(path, followlinks=False):
+        seen += len(dirs) + len(names)
         dirs[:] = sorted(item for item in dirs if item not in _SKIP)
         for name in sorted(names):
             item = Path(folder) / name
@@ -334,6 +386,8 @@ def _files(root: Path, path: Path) -> list[Path]:
                 found.append(item)
             if len(found) >= 400:
                 return found
+        if seen >= _WALK_MAX:
+            break
     return found
 
 
