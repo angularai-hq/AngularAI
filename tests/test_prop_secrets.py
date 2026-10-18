@@ -7,7 +7,7 @@ import uuid
 from hypothesis import example, given
 from hypothesis import strategies as st
 
-from angularai.secrets import contains_secret, looks_secret, redact
+from angularai.secrets import _PLACEHOLDERS, contains_secret, looks_secret, redact
 
 ALNUM = string.ascii_letters + string.digits
 
@@ -82,9 +82,10 @@ def test_redacting_twice_changes_nothing(
 
 
 # An environment secret is matched as a literal. Eight or more characters, not all
-# digits (a bare number is ignored on purpose, see secrets.py).
+# digits and not a placeholder such as "undefined" (both ignored on purpose, see
+# secrets.py).
 literal = st.text(alphabet=ALNUM + "!#%&*+-./:=?@^_~[]", min_size=8, max_size=40).filter(
-    lambda value: not value.isdigit()
+    lambda value: not value.isdigit() and value.lower() not in _PLACEHOLDERS
 )
 
 
