@@ -31,15 +31,7 @@ def pass_turn(
 ) -> TurnResult:
     """One pass. record, when given, is what the log keeps in place of the input."""
 
-    text = user_text.strip()
-    if not text:
-        raise InputRejected("Say something first.")
-    if len(text) > _MAX_INPUT_CHARS:
-        raise InputRejected("That input is too long to enter the cortex.")
-    if contains_secret(text, secrets):
-        raise InputRejected(
-            "That input looks like a secret. It was not sent and nothing was written."
-        )
+    text = screen(user_text, secrets)
 
     config = store.config()
     prompt = SYSTEM if system is None else system
@@ -64,6 +56,21 @@ def pass_turn(
     )
     store.append_pass(_ok_pass(kept, reply, drafts, integration, workspace, secrets))
     return TurnResult(reply, False, workspace.estimated_tokens, workspace.budget, integration.act)
+
+
+def screen(user_text: str, secrets: tuple[str, ...] = ()) -> str:
+    """Refuse input before anything else runs. No key, no model, and no disk are needed."""
+
+    text = user_text.strip()
+    if not text:
+        raise InputRejected("Say something first.")
+    if len(text) > _MAX_INPUT_CHARS:
+        raise InputRejected("That input is too long to enter the cortex.")
+    if contains_secret(text, secrets):
+        raise InputRejected(
+            "That input looks like a secret. It was not sent and nothing was written."
+        )
+    return text
 
 
 def _act_texts(act: Action) -> tuple[str, ...]:

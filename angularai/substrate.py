@@ -1,4 +1,5 @@
 import json
+import math
 from collections.abc import Callable, Mapping
 from typing import Protocol, assert_never
 
@@ -15,7 +16,8 @@ from angularai.models import Config, Integration, SubstrateKind, Workspace
 from angularai.parse import parse_integration
 from angularai.secrets import environment_secrets, redact
 
-Transport = Callable[[str, dict[str, str], Mapping[str, object], float], tuple[int, bytes]]
+Answer = tuple[int, bytes] | tuple[int, bytes, Mapping[str, str]]
+Transport = Callable[[str, dict[str, str], Mapping[str, object], float], Answer]
 _PARSE_NUDGE = "\n\nReturn only the JSON object."
 
 
@@ -207,34 +209,129 @@ def anthropic_text(payload: Mapping[str, object]) -> str:
     return reply
 
 
-def error_for_status(status: int, body: bytes, secret: str) -> SubstrateUnavailable | KeyRejected:
-    if status in {401, 403}:
+_BILLING = frozenset(
+    {
+        "insufficient_quota",
+        "billing_not_active",
+        "billing_error",
+        "billing_hard_limit_reached",
+        "payment_required",
+        "credit_balance_too_low",
+    }
+)
+_RATE = frozenset({"rate_limit_exceeded", "rate_limit_error", "rate_limited", "requests", "tokens"})
+_OVERLOADED = frozenset({"overloaded_error", "overloaded", "server_overloaded"})
+_MESSAGE_CAP = 200
+
+
+def error_for_status(
+    status: int,
+    body: bytes,
+    secret: str,
+    headers: Mapping[str, str] | None = None,
+) -> SubstrateUnavailable | KeyRejected:
+    """One sentence an operator can act on. The provider's words are redacted and capped."""
+
+    labels, raw_message = provider_error(body)
+    message = _said(raw_message, secret)
+    billing = _billing(status, labels)
+    if billing is not None:
+        return SubstrateUnavailable(
+            f"The substrate refused the pass for billing: {billing}. "
+            "Check the plan and credits for this key. Waiting will not help."
+        )
+    if status == 401:
         return KeyRejected("The substrate rejected the API key.")
-    if status == 429:
+    if status == 403:
+        return KeyRejected(_with("The substrate does not allow this key to do that.", message))
+    if status == 429 or labels & _RATE:
+        wait = _retry_after(headers or {})
+        if wait is not None:
+            return SubstrateUnavailable(
+                f"The substrate is rate limiting. Try again in {wait} seconds."
+            )
         return SubstrateUnavailable("The substrate is rate limiting. Wait and try again.")
+    if status == 529 or labels & _OVERLOADED:
+        return SubstrateUnavailable("The substrate is overloaded. Try again later.")
+    if status == 404:
+        return SubstrateUnavailable(
+            _with("The substrate returned 404. Check the model and the base URL.", message)
+        )
     if status >= 500:
-        return SubstrateUnavailable("The substrate is unavailable.")
-    message = redact(provider_message(body), (secret,))
-    if message:
-        return SubstrateUnavailable(f"The substrate returned {status}. {message}")
-    return SubstrateUnavailable(f"The substrate returned {status}.")
+        return SubstrateUnavailable(_with("The substrate is unavailable.", message))
+    return SubstrateUnavailable(_with(f"The substrate returned {status}.", message))
 
 
 def provider_message(body: bytes) -> str:
+    return provider_error(body)[1]
+
+
+def provider_error(body: bytes) -> tuple[frozenset[str], str]:
+    """The error labels and message of an OpenAI, Anthropic, or compatible body.
+
+    OpenAI: {"error": {"message", "type", "code"}}. Anthropic: {"type": "error",
+    "error": {"type", "message"}}. A compatible server may send {"error": "text"},
+    {"message": ...}, or {"detail": ...}. Anything else has no labels and no message.
+    """
+
     try:
         payload: object = json.loads(body)
-    except json.JSONDecodeError:
-        return ""
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return frozenset(), ""
     if not isinstance(payload, dict):
-        return ""
+        return frozenset(), ""
+    labels: set[str] = set()
+    message = ""
     error = payload.get("error")
     if isinstance(error, dict):
-        message = error.get("message")
-        if isinstance(message, str):
-            return " ".join(message.split())[:200]
-    if isinstance(error, str):
-        return " ".join(error.split())[:200]
-    return ""
+        for field in ("code", "type", "status"):
+            value = error.get(field)
+            if isinstance(value, str) and value.strip():
+                labels.add(value.strip().lower())
+        found = error.get("message")
+        if isinstance(found, str):
+            message = found
+    elif isinstance(error, str):
+        message = error
+    if not message:
+        for field in ("message", "detail"):
+            found = payload.get(field)
+            if isinstance(found, str):
+                message = found
+                break
+    return frozenset(labels), " ".join(message.split())
+
+
+def _said(message: str, secret: str) -> str:
+    cleaned = redact(message, (secret,) if secret else ())
+    if len(cleaned) > _MESSAGE_CAP:
+        cleaned = cleaned[: _MESSAGE_CAP - 3] + "..."
+    return cleaned
+
+
+def _with(sentence: str, message: str) -> str:
+    return f"{sentence} {message}" if message else sentence
+
+
+def _billing(status: int, labels: frozenset[str]) -> str | None:
+    for label in sorted(labels):
+        if label in _BILLING or "billing" in label or "quota" in label:
+            return label
+    if status == 402:
+        return "payment_required"
+    return None
+
+
+def _retry_after(headers: Mapping[str, str]) -> int | None:
+    lowered = {name.lower(): value for name, value in headers.items()}
+    raw = lowered.get("retry-after", "").strip()
+    if raw.isdigit():
+        return max(1, int(raw))
+    millis = lowered.get("retry-after-ms", "").strip()
+    try:
+        return max(1, math.ceil(float(millis) / 1000)) if millis else None
+    except ValueError:
+        return None
 
 
 def _post(
@@ -244,9 +341,11 @@ def _post(
     payload: Mapping[str, object],
     secret: str,
 ) -> dict[str, object]:
-    status, body = transport(url, headers, payload, 90)
+    answer = transport(url, headers, payload, 90)
+    status, body = answer[0], answer[1]
     if status < 200 or status >= 300:
-        raise error_for_status(status, body, secret)
+        found = answer[2] if len(answer) == 3 else {}
+        raise error_for_status(status, body, secret, found)
     return _object(body)
 
 

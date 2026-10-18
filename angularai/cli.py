@@ -10,7 +10,7 @@ from angularai.agent import run_agent
 from angularai.configure import add_lock, remove_lock, set_budget, wire
 from angularai.errors import AngularAIError
 from angularai.models import SubstrateKind
-from angularai.pilot import pass_turn
+from angularai.pilot import pass_turn, screen
 from angularai.present import format_banner, format_locks, format_recall, format_traces
 from angularai.session import cortex_status, session_command
 from angularai.store import Store, init_cortex, open_store
@@ -97,13 +97,15 @@ def _agent(root: Path, args: argparse.Namespace) -> int:
     directory = Path.cwd() if args.root is None else args.root
     print(f"root  {directory.expanduser().resolve()}", file=sys.stderr)
     print(f"run   {'on' if args.allow_run else 'off'}", file=sys.stderr)
+    secrets = secret_values(os.environ)
+    task = screen(" ".join(args.task), secrets)
     substrate = build_substrate(store.config(), os.environ)
     result = run_agent(
         store,
         substrate,
-        " ".join(args.task),
+        task,
         directory,
-        secret_values(os.environ),
+        secrets,
         args.steps,
         lambda line: print(line, file=sys.stderr),
         args.allow_run,
@@ -184,8 +186,10 @@ def repl_line(store: Store, line: str) -> tuple[ReplAction, str | None]:
 
 
 def _speak(store: Store, text: str) -> str:
+    secrets = secret_values(os.environ)
+    screen(text, secrets)
     substrate = build_substrate(store.config(), os.environ)
-    result = pass_turn(store, substrate, text, secret_values(os.environ))
+    result = pass_turn(store, substrate, text, secrets)
     return result.reply
 
 

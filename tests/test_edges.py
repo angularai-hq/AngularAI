@@ -218,7 +218,13 @@ def test_http_reads_a_body_and_names_failures(monkeypatch: pytest.MonkeyPatch) -
 
     error = HTTPError("http://example.test", 401, "no", Message(), BytesIO(b"nope"))
     monkeypatch.setattr("angularai.http._OPENER", Opener(error))
-    assert http_json("http://example.test", {}, {}) == (401, b"nope")
+    assert http_json("http://example.test", {}, {}) == (401, b"nope", {})
+
+    limited = Message()
+    limited["Retry-After"] = "7"
+    error = HTTPError("http://example.test", 429, "slow", limited, BytesIO(b"{}"))
+    monkeypatch.setattr("angularai.http._OPENER", Opener(error))
+    assert http_json("http://example.test", {}, {}) == (429, b"{}", {"retry-after": "7"})
 
     monkeypatch.setattr("angularai.http._OPENER", Opener(TimeoutError("slow")))
     with pytest.raises(SubstrateUnavailable, match="timed out"):

@@ -169,7 +169,7 @@ A known key shape: OpenAI, Anthropic, GitHub, Stripe, Google, AWS, GitLab, Huggi
 <details>
 <summary>What does a failure look like?</summary>
 
-No cortex yet: `angularai init`. No key: the missing variable is named, and the value is never printed. The API is down, or the reply is not the JSON object AngularAI asked for: nothing new is remembered. The input is over the budget: it is not sent. A lock phrase or a secret in the reply or its tool: you see `Value lock held this reply.` The held text is not stored, and a held reply does not run a tool. A trace the model was not shown is not superseded. When the step budget is spent, the last reply is printed and the cortex keeps that pass.
+No cortex yet: `angularai init`. A secret in the input: it is refused before the key is looked up. No key: the missing variable is named, and the value is never printed. A rejected key: `The substrate rejected the API key.` No quota or no billing: the provider's code is named, for example `insufficient_quota`, and waiting will not help. A rate limit: you are told to wait, for the seconds the provider asked for when it says. An overloaded or failing API: you are told so, with the provider's message, redacted and cut at 200 characters. The API is down, or the reply is not the JSON object AngularAI asked for: nothing new is remembered. The input is over the budget: it is not sent. A lock phrase or a secret in the reply or its tool: you see `Value lock held this reply.` The held text is not stored, and a held reply does not run a tool. A trace the model was not shown is not superseded. When the step budget is spent, the last reply is printed and the cortex keeps that pass.
 
 </details>
 

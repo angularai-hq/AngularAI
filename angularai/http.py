@@ -29,7 +29,9 @@ def http_json(
     headers: dict[str, str],
     payload: Mapping[str, object],
     timeout: float = TIMEOUT_SECONDS,
-) -> tuple[int, bytes]:
+) -> tuple[int, bytes] | tuple[int, bytes, Mapping[str, str]]:
+    """POST JSON. A success is (status, body). An HTTP error also carries its headers."""
+
     data = json.dumps(payload).encode("utf-8")
     request = Request(url, data=data, headers=headers, method="POST")
     try:
@@ -38,7 +40,8 @@ def http_json(
             body = response.read()
     except HTTPError as exc:
         raw = exc.read()
-        return exc.code, raw if isinstance(raw, bytes) else b""
+        found = {name.lower(): value for name, value in exc.headers.items()} if exc.headers else {}
+        return exc.code, raw if isinstance(raw, bytes) else b"", found
     except TimeoutError as exc:
         raise SubstrateUnavailable("The substrate timed out.") from exc
     except URLError as exc:
