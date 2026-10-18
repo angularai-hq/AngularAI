@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from angularai.errors import ConfigError, CortexExists, LogDamaged
+from angularai.errors import ConfigError, CortexExists
 from angularai.models import Integration, Trace, TraceDraft
 from angularai.pilot import pass_turn
 from angularai.store import init_cortex, open_store
@@ -23,8 +23,10 @@ def test_a_damaged_log_is_named(tmp_path: Path) -> None:
     init_cortex(tmp_path)
     with (tmp_path / "passes.jsonl").open("a", encoding="utf-8") as handle:
         handle.write("{not json}\n")
-    with pytest.raises(LogDamaged, match="line 1"):
-        open_store(tmp_path).view()
+    notices: list[str] = []
+    store = open_store(tmp_path, warn=notices.append)
+    assert store.view().episodes == ()
+    assert notices and "passes.jsonl:1" in notices[0]
 
 
 def test_an_unknown_config_field_is_refused(tmp_path: Path) -> None:
