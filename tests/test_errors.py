@@ -5,6 +5,7 @@ import pytest
 
 from angularai.errors import KeyRejected, SubstrateUnavailable
 from angularai.models import Workspace
+from angularai.provider import Policy
 from angularai.substrate import (
     Answer,
     Anthropic,
@@ -75,7 +76,7 @@ RATE = openai("rate_limit_exceeded", "requests", "Rate limit reached for request
             {"Retry-After": "3"},
             "The substrate is rate limiting. Try again in 3 seconds.",
         ),
-        (429, b"", {"retry-after": "Wed, 21 Oct 2026 07:28:00 GMT"}, "Wait and try again."),
+        (429, b"", {"retry-after": "soon"}, "Wait and try again."),
         (429, b"not json", {}, "The substrate is rate limiting. Wait and try again."),
         (
             529,
@@ -207,6 +208,7 @@ def test_anthropic_rate_limit_over_http() -> None:
         base_url="https://api.anthropic.com/v1",
         api_key=KEY,
         transport=_fake((429, body, {"retry-after": "9"})),
+        policy=Policy(attempts=1),
     )
     with pytest.raises(SubstrateUnavailable, match="Try again in 9 seconds"):
         model.integrate(_workspace())
@@ -218,6 +220,7 @@ def test_a_two_part_answer_still_maps() -> None:
         base_url="https://api.anthropic.com/v1",
         api_key=KEY,
         transport=_fake((529, b"")),
+        policy=Policy(attempts=1),
     )
     with pytest.raises(SubstrateUnavailable, match="overloaded"):
         model.integrate(_workspace())
