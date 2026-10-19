@@ -71,3 +71,16 @@ def test_the_step_budget_stops_the_loop(tmp_path: Path) -> None:
     assert result.stop == "budget"
     assert result.steps == 2
     assert len(scripted.seen) == 2
+
+
+def test_the_agent_is_told_to_look_before_it_answers(tmp_path: Path) -> None:
+    """gpt-5.4-mini answered "provide the files" at step 1 until the prompt said this."""
+
+    root = tmp_path / "work"
+    root.mkdir()
+    init_cortex(tmp_path / "cortex")
+    scripted = Scripted(script=(Integration("Done.", (), (), None),))
+    run_agent(open_store(tmp_path / "cortex"), scripted, "make the failing test pass", root)
+    system = scripted.seen[0].system
+    assert "You see the files only through tools, so start with list ." in system
+    assert "Only a tool changes a file; the reply changes nothing." in system

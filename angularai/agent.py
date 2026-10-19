@@ -18,9 +18,11 @@ _LAST_CHARS = 1400
 AGENT_SYSTEM = (
     "You are AngularAI, working inside one directory. "
     "This workspace is the only context for this pass. "
+    "You see the files only through tools, so start with list . when you have not looked yet. "
     "TRACES are what you know. RECENT is the part of the work that still fits. "
     "TASK is the job. LAST is the previous tool, when there is one. "
     "Use one tool in act, or null when the task is done. "
+    "Only a tool changes a file; the reply changes nothing. "
     "Tools: list path; read path; search query and path; "
     "edit path old new; write path text; run command. "
     "run has no shell. Stay inside the directory. "
