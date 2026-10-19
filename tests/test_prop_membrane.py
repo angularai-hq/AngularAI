@@ -35,6 +35,10 @@ def test_a_longer_text_never_counts_less(text: str, more: int) -> None:
 
 
 words = st.text(alphabet="abcdefghij klmn", min_size=1, max_size=60).filter(str.strip)
+# Latin and CJK words in one line, so a mixed question still finds mixed traces.
+mixed = st.text(alphabet="abcdefg 你好世界 안녕 カタ ＡＢ 😀", min_size=1, max_size=60).filter(
+    str.strip
+)
 traces = st.lists(
     st.builds(
         lambda index, text: Trace(
@@ -47,7 +51,7 @@ traces = st.lists(
             superseded_by=None,
         ),
         st.integers(0, 59),
-        words | texts,
+        words | mixed | texts,
     ),
     max_size=12,
     unique_by=lambda trace: trace.id,
@@ -58,8 +62,8 @@ episodes = st.lists(
             at=f"2026-01-02T00:00:{index:02d}Z", user=user, reply=reply, outcome="ok"
         ),
         st.integers(0, 59),
-        words | texts | huge,
-        st.none() | words | huge,
+        words | mixed | texts | huge,
+        st.none() | words | mixed | huge,
     ),
     max_size=8,
     unique_by=lambda episode: episode.at,
@@ -69,13 +73,14 @@ episodes = st.lists(
 @given(
     traces,
     episodes,
-    texts | huge | words,
+    texts | huge | words | mixed,
     st.integers(1, 4000),
     st.integers(1, 4000),
     st.lists(words, max_size=3),
 )
 @example([], [], "", 1, 1, [])
 @example([], [], "😀" * 4000, 2000, 4000, [])
+@example([], [], "你好 hello 世界 " * 300, 2000, 4000, [])
 def test_the_workspace_never_exceeds_the_budget(
     found: list[Trace],
     said: list[Episode],

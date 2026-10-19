@@ -47,7 +47,7 @@ endobj
 endobj
 8 0 obj
 <<
-/Author (Teodor Walter Vido) /CreationDate (D:20261017194004+02'00') /Creator (\(unspecified\)) /Keywords () /ModDate (D:20261017194004+02'00') /Producer (ReportLab PDF Library - \(opensource\)) 
+/Author (Teodor Walter Vido) /CreationDate (D:20261019192440+02'00') /Creator (\(unspecified\)) /Keywords () /ModDate (D:20261019192440+02'00') /Producer (ReportLab PDF Library - \(opensource\)) 
   /Subject (\(unspecified\)) /Title (AngularAI) /Trapped /False
 >>
 endobj
@@ -58,7 +58,7 @@ endobj
 endobj
 10 0 obj
 <<
-/Length 6062
+/Length 6215
 >>
 stream
 1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
@@ -210,35 +210,35 @@ BT 1 0 0 1 0 2.5 Tm /F3 8.5 Tf 11 TL (Figure 1. The membrane. The model sees the
 Q
 Q
 q
-1 0 0 1 70 374.8898 cm
+1 0 0 1 70 359.8898 cm
 q
 0 0 0 rg
-BT 1 0 0 1 0 34.5 Tm /F1 10.5 Tf 15 TL 1.669185 Tw (The budget is an estimate: four characters to one token, rounded up. AngularAI enforces that) Tj T* 0 Tw .572005 Tw (estimate. It is not the provider's tokenizer. A short call and a long life can share one budget. The) Tj T* 0 Tw (file may outgrow it. The call may not.) Tj T* ET
+BT 1 0 0 1 0 49.5 Tm /F1 10.5 Tf 15 TL 1.716106 Tw (The budget is an estimate: four ASCII characters to one token. A wide character \(CJK, kana,) Tj T* 0 Tw 2.988435 Tw (Hangul, fullwidth\) is one, two above U+FFFF, like most emoji. Any other character is half.) Tj T* 0 Tw .132943 Tw (Rounded up. AngularAI enforces that estimate. It is not the provider's tokenizer. A short call and a) Tj T* 0 Tw (long life can share one budget. The file may outgrow it. The call may not.) Tj T* ET
 Q
 Q
 q
-1 0 0 1 70 350.8898 cm
+1 0 0 1 70 335.8898 cm
 q
 0 0 0 rg
 BT 1 0 0 1 0 3 Tm /F2 12 Tf 15 TL (What a pass writes) Tj T* ET
 Q
 Q
 q
-1 0 0 1 70 297.8898 cm
+1 0 0 1 70 282.8898 cm
 q
 0 0 0 rg
 BT 1 0 0 1 0 34.5 Tm /F1 10.5 Tf 15 TL .16929 Tw (A secret in the input is refused before the call, and before any line is written. The key is not a field) Tj T* 0 Tw .113256 Tw (in the cortex. It is read from the environment when you speak. OpenAI, Anthropic, or a compatible) Tj T* 0 Tw (endpoint: the same rule.) Tj T* ET
 Q
 Q
 q
-1 0 0 1 70 243.8898 cm
+1 0 0 1 70 228.8898 cm
 q
 0 0 0 rg
 BT 1 0 0 1 0 34.5 Tm /F1 10.5 Tf 15 TL -0.1196 Tw (The reply comes back through a value lock. A phrase you forbade, or a secret in the reply, holds it.) Tj T* 0 Tw .216952 Tw (You see one sentence: Value lock held this reply. The held text is not stored. A reply that was not) Tj T* 0 Tw (judged cannot leave.) Tj T* ET
 Q
 Q
 q
-1 0 0 1 65.6378 154.8898 cm
+1 0 0 1 65.6378 139.8898 cm
 q
 0 0 0 rg
 BT /F2 9 Tf 12 TL ET
@@ -269,10 +269,10 @@ Q
 Q
 Q
 q
-1 0 0 1 70 146.8898 cm
+1 0 0 1 70 131.8898 cm
 Q
 q
-1 0 0 1 70 101.8898 cm
+1 0 0 1 70 86.88976 cm
 q
 0 0 0 rg
 BT 1 0 0 1 0 34.5 Tm /F1 10.5 Tf 15 TL 2.773037 Tw (A finished pass appends one line to the log. Folding that log produces the traces and the) Tj T* 0 Tw .703206 Tw (episodes. A trace the model was not shown cannot be superseded. A superseded trace stays in) Tj T* 0 Tw (the file and leaves the workspace.) Tj T* ET
@@ -442,11 +442,11 @@ xref
 0000000922 00000 n 
 0000001203 00000 n 
 0000001268 00000 n 
-0000007382 00000 n 
+0000007535 00000 n 
 trailer
 <<
 /ID 
-[<e55be2f4648c3e02433ddce31bfcba2c><e55be2f4648c3e02433ddce31bfcba2c>]
+[<104529d0edd1aca28ef97c35c00749a9><104529d0edd1aca28ef97c35c00749a9>]
 % ReportLab generated PDF document -- digest (opensource)
 
 /Info 8 0 R
@@ -454,5 +454,5 @@ trailer
 /Size 12
 >>
 startxref
-11172
+11325
 %%EOF

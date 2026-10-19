@@ -94,7 +94,9 @@ _INTRO = (
     "of the question, and the workspace takes only what fits. The rest is not sent. "
     "It can return on a later pass, when a question shares its words. "
     "The vendor's weights do not change. The plasticity is the cortex.",
-    "The budget is an estimate: four characters to one token, rounded up. "
+    "The budget is an estimate: four ASCII characters to one token. "
+    "A wide character (CJK, kana, Hangul, fullwidth) is one, two above U+FFFF, "
+    "like most emoji. Any other character is half. Rounded up. "
     "AngularAI enforces that estimate. It is not the provider's tokenizer. "
     "A short call and a long life can share one budget. The file may outgrow it. The call may not.",
 )
