@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from angularai.assemble import SYSTEM, assemble
-from angularai.errors import InputRejected, SubstrateError
+from angularai.errors import InputRejected, InputTooLong, SecretRefused, SubstrateError
 from angularai.lock import Thinker, ValueLock
 from angularai.models import (
     Action,
@@ -87,9 +87,9 @@ def screen(user_text: str, secrets: tuple[str, ...] = ()) -> str:
     if not text:
         raise InputRejected("Say something first.")
     if len(text) > _MAX_INPUT_CHARS:
-        raise InputRejected("That input is too long to enter the cortex.")
+        raise InputTooLong("That input is too long to enter the cortex.")
     if contains_secret(text, secrets):
-        raise InputRejected(
+        raise SecretRefused(
             "That input looks like a secret. It was not sent and nothing was written."
         )
     return text

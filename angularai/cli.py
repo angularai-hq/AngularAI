@@ -10,7 +10,7 @@ from angularai.agent import run_agent
 from angularai.configure import add_lock, remove_lock, set_budget, wire
 from angularai.errors import AngularAIError, InputRejected, KeyMissing, NoCortex
 from angularai.models import SubstrateKind
-from angularai.names import DEFAULT, cortex_home, label, list_names, named_root
+from angularai.names import cortex_home, label, list_names, named_root, resolve_root
 from angularai.peers import (
     DEFAULT_TOKENS,
     DEFAULT_TURNS,
@@ -321,16 +321,7 @@ def _status(store: Store) -> str:
 
 
 def _root(cortex: Path | None, name: str | None = None) -> Path:
-    if cortex is not None and name is not None:
-        raise InputRejected("Choose --cortex PATH or --name NAME, not both.")
-    if cortex is not None:
-        return cortex.expanduser()
-    if name is not None:
-        return named_root(name, os.environ)
-    env = os.environ.get("ANGULARAI_CORTEX")
-    if env:
-        return Path(env).expanduser()
-    return cortex_home(os.environ) / DEFAULT
+    return resolve_root(cortex, name, os.environ)
 
 
 def _kind(value: str) -> SubstrateKind:

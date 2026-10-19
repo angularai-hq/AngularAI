@@ -1,0 +1,72 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "angularai-mcp"
+version = "0.1.0"
+description = "AngularAI's cortex as MCP tools: remember, recall, forget, status."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [{ name = "Teodor Walter Vido" }]
+keywords = ["mcp", "model-context-protocol", "memory", "llm", "cortex"]
+dependencies = [
+    "angularai>=0.1.0",
+    "mcp>=2.3,<3",
+    "pydantic>=2.12",
+    "starlette>=0.48",
+    "uvicorn>=0.31.1",
+]
+
+[project.scripts]
+angularai-mcp = "angularai_mcp.cli:main"
+
+[project.urls]
+Repository = "https://github.com/angularai-hq/AngularAI"
+
+[tool.uv.sources]
+angularai = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.100",
+    "mypy>=1.13",
+    "pytest>=8.3",
+    "pytest-cov>=5",
+    "ruff>=0.8",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["angularai_mcp"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["angularai_mcp", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["N818"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["angularai", "angularai_mcp", "tests"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+files = ["angularai_mcp", "tests"]
+explicit_package_bases = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["angularai_mcp"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = false

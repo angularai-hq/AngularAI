@@ -25,6 +25,22 @@ class InputRejected(AngularAIError):
     """The input never entered the cortex."""
 
 
+class InputTooLong(InputRejected):
+    """The input is over a length cap. Nothing was written."""
+
+
+class SecretRefused(InputRejected):
+    """The input looks like a secret. Nothing was sent or written."""
+
+
+class LockHeld(InputRejected):
+    """The value lock holds the text: a locked phrase or a secret. Nothing was written."""
+
+
+class TraceNotFound(AngularAIError):
+    """No trace in the cortex has that id."""
+
+
 class InputDoesNotFit(AngularAIError):
     """The fixed part of the workspace is already over budget."""
 

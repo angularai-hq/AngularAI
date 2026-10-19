@@ -1,8 +1,8 @@
 from collections.abc import Mapping
 from pathlib import Path
 
-from angularai.attention import score
 from angularai.models import Config, CortexView, PassRecord, Trace
+from angularai.notes import rank
 
 
 def format_banner(config: Config, view: CortexView) -> str:
@@ -29,20 +29,13 @@ def format_recall(
 ) -> str:
     """Lexical ranks as 0.50. A trace found only by meaning shows its cosine as ~0.64."""
 
-    similar = meaning or {}
-    ranked: list[tuple[float, str, Trace]] = []
-    for trace in view.current_traces():
-        document = " ".join((trace.text, " ".join(trace.wavelengths), trace.source))
-        rank = score(query, document)
-        if rank > 0:
-            ranked.append((rank, f"{rank:.2f}", trace))
-        elif trace.id in similar:
-            ranked.append((similar[trace.id], f"~{similar[trace.id]:.2f}", trace))
-    ranked.sort(key=lambda item: item[0], reverse=True)
+    ranked = rank(view, query, meaning)
     if not ranked:
         return "Nothing in the cortex matches that."
     lines: list[str] = []
-    for _, shown, trace in ranked[:limit]:
+    for item in ranked[:limit]:
+        trace = item.trace
+        shown = f"{item.score:.2f}" if item.match == "lexical" else f"~{item.score:.2f}"
         waves = ",".join(trace.wavelengths) if trace.wavelengths else "-"
         lines.append(f"{trace.id}  {shown}  {waves}  {trace.text}")
     return "\n".join(lines)

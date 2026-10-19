@@ -31,7 +31,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Protocol
 
-from angularai.durable import append_line, locked
+from angularai.durable import append_line, atomic_write, locked
 from angularai.errors import AngularAIError, BadResponse, ConfigError, InputRejected, KeyMissing
 from angularai.models import Config, CortexView, Trace
 from angularai.provider import Clock, Policy
@@ -306,6 +306,38 @@ def load_vectors(root: Path, model: str) -> dict[str, tuple[str, list[float]]]:
         if parsed is not None:
             found[parsed[0]] = (parsed[1], parsed[2])
     return found
+
+
+def drop_vectors(root: Path, trace_ids: frozenset[str]) -> int:
+    """Remove every vector of these traces, for any model. Returns how many lines went.
+
+    The file is rewritten with atomic_write under the cortex lock. A line that cannot be
+    read is kept as it is.
+    """
+
+    path = root / VECTORS
+    with locked(root):
+        try:
+            raw = path.read_bytes()
+        except FileNotFoundError:
+            return 0
+        lines = [line for line in raw.split(b"\n") if line]
+        kept = [line for line in lines if _trace_of(line) not in trace_ids]
+        dropped = len(lines) - len(kept)
+        if dropped:
+            atomic_write(path, b"".join(line + b"\n" for line in kept))
+    return dropped
+
+
+def _trace_of(line: bytes) -> str | None:
+    try:
+        payload: object = json.loads(line)
+    except (ValueError, RecursionError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    trace = payload.get("trace")
+    return trace if isinstance(trace, str) else None
 
 
 def cosine(a: Sequence[float], b: Sequence[float]) -> float:

@@ -1,5 +1,6 @@
 import json
 import re
+from collections.abc import Sequence
 
 from angularai.errors import SubstrateUnreadable
 from angularai.models import Action, Integration, TraceDraft
@@ -60,6 +61,21 @@ def _remember(value: object) -> tuple[TraceDraft, ...]:
         if draft is not None:
             drafts.append(draft)
     return tuple(drafts)
+
+
+def trace_draft(text: str, wavelengths: Sequence[str] = ()) -> TraceDraft | None:
+    """A trace as the model would write it, or None: one line of at most 240 characters,
+    and at most 4 wavelengths, each a lowercase slug. Whitespace runs become one space."""
+
+    if len(wavelengths) > 4:
+        return None
+    return _draft({"text": text, "wavelengths": list(wavelengths)})
+
+
+def valid_trace_id(value: str) -> bool:
+    """A trace id as AngularAI writes it: t_ and 12 hex digits."""
+
+    return _TRACE_ID.fullmatch(value) is not None
 
 
 def _draft(value: object) -> TraceDraft | None:

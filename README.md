@@ -147,6 +147,16 @@ Each cortex writes the passes it took part in, with the other's name and its rol
 
 No server, no socket. Both sides run in one process, on the provider calls each already makes. Each write takes the lock of its own cortex and none is held across a call, so two cortexes, or two conversations, run at once.
 
+## Serve
+
+```bash
+uvx --from "git+https://github.com/angularai-hq/AngularAI#subdirectory=packages/angularai-mcp" angularai-mcp
+```
+
+`angularai-mcp` is the cortex as MCP tools, for Claude Desktop, Claude Code, Codex, Cursor, or any MCP client: `remember`, `recall`, `forget`, `status`, `cortexes`. It runs no model. A fact passes the gates a model's trace passes: a secret is refused and a locked phrase holds it. `recall` returns what fits the budget, with each trace's id and source. `forget` removes one trace by its exact id, from the log and from `embeddings.jsonl`. It is the one thing that deletes. stdio by default. `--http` serves streamable HTTP on loopback, with a bearer token when `ANGULARAI_MCP_TOKEN` is set. `--name` picks a cortex.
+
+It is a separate package in [`packages/angularai-mcp`](packages/angularai-mcp), with the setup for each client. `angularai` itself does not depend on MCP. After a release, `uvx angularai-mcp`.
+
 ## Questions
 
 <details>
@@ -198,7 +208,7 @@ No. `/clear` clears the screen. The cortex stays on disk.
 <details>
 <summary>What does recall by meaning send?</summary>
 
-Nothing, unless `ANGULARAI_EMBEDDINGS` is set. Then `say`, the session's turns, and `angularai recall` send the question and each trace not yet embedded, redacted, to the embeddings endpoint. Episodes and tool output are not sent. A trace is embedded once. A trace whose cosine with the question is 0.35 or more ranks by that, at most 8 of them, and is sent to the model only if it fits the budget. In `recall` its score shows as `~0.49`. `angularai recall --lexical`, `/recall` in the session, and `angularai agent` match words only.
+Nothing, unless `ANGULARAI_EMBEDDINGS` is set. Then `say`, the session's turns, `angularai recall`, and `recall` in angularai-mcp send the question and each trace not yet embedded, redacted, to the embeddings endpoint. `remember` in angularai-mcp sends the new trace. Episodes and tool output are not sent. A trace is embedded once. A trace whose cosine with the question is 0.35 or more ranks by that, at most 8 of them, and is sent to the model only if it fits the budget. In `recall` its score shows as `~0.49`. `angularai recall --lexical`, `/recall` in the session, and `angularai agent` match words only.
 
 | variable | default | |
 | --- | --- | --- |
@@ -251,7 +261,7 @@ uv run pytest --cov
 uv build
 ```
 
-CI runs the same five on Linux and macOS, Python 3.12 and 3.13, for every pull request and every push to main. Coverage under 80% fails.
+CI runs the same five on Linux and macOS, Python 3.12 and 3.13, for every pull request and every push to main, then the same five in `packages/angularai-mcp`. Coverage under 80% fails, in each. `uv sync --all-packages` installs both.
 
 `tests/test_prop_*.py` are Hypothesis properties: the budget, secrets, the lock, the sandbox, the log, the provider layer, and cortexes that talk. `HYPOTHESIS_PROFILE=ci` runs more examples from a fixed seed, as CI does. The default is `dev`.
 
