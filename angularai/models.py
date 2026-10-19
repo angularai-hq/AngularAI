@@ -4,6 +4,18 @@ from typing import Literal
 SubstrateKind = Literal["openai", "anthropic", "compatible"]
 Outcome = Literal["ok", "held", "error"]
 TraceState = Literal["current", "superseded"]
+# asked: this cortex put the input to the peer, and the reply is the peer's.
+# answered: the input came from the peer, and the reply is this cortex's.
+# opened: the input came from the operator, and the reply went to the peer.
+PeerRole = Literal["asked", "answered", "opened"]
+
+
+@dataclass(frozen=True)
+class Peer:
+    """The other cortex in a pass that crossed between two. name is a valid cortex name."""
+
+    name: str
+    role: PeerRole
 
 
 @dataclass(frozen=True)
@@ -63,6 +75,7 @@ class Episode:
     user: str
     reply: str | None
     outcome: Outcome
+    peer: Peer | None = None
 
 
 @dataclass(frozen=True)
@@ -103,6 +116,7 @@ class PassRecord:
     traces_held: int
     episodes_shown: int
     episodes_held: int
+    peer: Peer | None = None
 
 
 @dataclass(frozen=True)

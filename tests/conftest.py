@@ -35,3 +35,20 @@ def no_real_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
 
     for name in ("ANGULARAI_EMBEDDINGS", "ANGULARAI_EMBEDDINGS_MODEL", "ANGULARAI_EMBEDDINGS_MIN"):
         monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def no_ambient_cortex_or_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No test reaches the operator's cortexes or keys. A test sets what it needs.
+
+    Values are removed, never read or printed.
+    """
+
+    for name in (
+        "ANGULARAI_CORTEX",
+        "ANGULARAI_HOME",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "ANGULARAI_API_KEY",
+    ):
+        monkeypatch.delenv(name, raising=False)

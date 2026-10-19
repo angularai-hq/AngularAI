@@ -8,8 +8,18 @@ from typing import Literal
 from angularai import __version__
 from angularai.agent import run_agent
 from angularai.configure import add_lock, remove_lock, set_budget, wire
-from angularai.errors import AngularAIError, KeyMissing
+from angularai.errors import AngularAIError, InputRejected, KeyMissing, NoCortex
 from angularai.models import SubstrateKind
+from angularai.names import DEFAULT, cortex_home, label, list_names, named_root
+from angularai.peers import (
+    DEFAULT_TOKENS,
+    DEFAULT_TURNS,
+    Cortex,
+    Line,
+    ask,
+    converse,
+    stop_notice,
+)
 from angularai.pilot import pass_turn, screen
 from angularai.present import format_banner, format_locks, format_recall, format_traces
 from angularai.semantic import SemanticRecall, embedder_from_env, minimum_from_env
@@ -28,9 +38,9 @@ ReplAction = Literal["quit", "continue"]
 def main(argv: Sequence[str] | None = None) -> int:
     raw = list(sys.argv[1:] if argv is None else argv)
     try:
-        cortex, rest = _extract_cortex(raw)
+        cortex, name, rest = _extract_cortex(raw)
         args = _parser().parse_args(rest)
-        return _dispatch(args, cortex)
+        return _dispatch(args, cortex, name)
     except AngularAIError as exc:
         print(exc, file=sys.stderr)
         return 1
@@ -39,15 +49,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 130
 
 
-def _dispatch(args: argparse.Namespace, cortex: Path | None) -> int:
-    root = _root(cortex)
+def _dispatch(args: argparse.Namespace, cortex: Path | None, name: str | None) -> int:
+    root = _root(cortex, name)
     command = args.command
     if command is None:
         return _open_session(_open(root))
     if command == "repair":
         return _repair(root)
     if command == "init":
-        return _init(root)
+        return _init(root, name)
+    if command == "ask":
+        return _ask(root, name, args)
+    if command == "converse":
+        return _converse(root, name, args)
+    if command == "cortexes":
+        return _cortexes()
     if command == "wire":
         return _wire(root, args)
     if command == "say":
@@ -86,7 +102,9 @@ def _repair(root: Path) -> int:
     return 0
 
 
-def _init(root: Path) -> int:
+def _init(root: Path, name: str | None) -> int:
+    if name is not None:
+        cortex_home(os.environ).mkdir(parents=True, exist_ok=True, mode=0o700)
     init_cortex(root)
     print(f"Cortex is at {root}")
     print("Wire a model with: angularai wire openai --model <name>")
@@ -131,6 +149,65 @@ def _agent(root: Path, args: argparse.Namespace) -> int:
     if result.stop == "budget":
         print("The step budget is spent.", file=sys.stderr)
     print(result.reply)
+    return 0
+
+
+def _ask(root: Path, name: str | None, args: argparse.Namespace) -> int:
+    asker_store = _open(root)
+    target_root = _peer_root(root, args.to)
+    target_store = _open_named(args.to, target_root)
+    secrets = secret_values(os.environ)
+    question = screen(" ".join(args.text), secrets)
+    substrate = build_substrate(target_store.config(), os.environ)
+    asker = Cortex(name or label(root), asker_store, None, secrets)
+    target = Cortex(args.to, target_store, substrate, secrets, _semantic(target_store))
+    print(ask(asker, target, question).reply)
+    return 0
+
+
+def _converse(root: Path, name: str | None, args: argparse.Namespace) -> int:
+    opener_store = _open(root)
+    other_root = _peer_root(root, args.peer)
+    other_store = _open_named(args.peer, other_root)
+    secrets = secret_values(os.environ)
+    opening = screen(" ".join(args.text), secrets)
+    opener_substrate = build_substrate(opener_store.config(), os.environ)
+    other_substrate = build_substrate(other_store.config(), os.environ)
+    opener = Cortex(
+        name or label(root), opener_store, opener_substrate, secrets, _semantic(opener_store)
+    )
+    other = Cortex(args.peer, other_store, other_substrate, secrets, _semantic(other_store))
+
+    def show(line: Line) -> None:
+        print(f"{line.speaker}  {line.text}", flush=True)
+
+    result = converse(opener, other, opening, args.turns, args.tokens, show)
+    print(stop_notice(result, args.turns, args.tokens), file=sys.stderr)
+    return 0
+
+
+def _peer_root(root: Path, peer: str) -> Path:
+    """The named peer's directory. It must not be this cortex under another path."""
+
+    other = named_root(peer, os.environ)
+    if other.exists() and root.exists() and os.path.samefile(other, root):
+        raise InputRejected("A cortex cannot talk to itself.")
+    return other
+
+
+def _open_named(name: str, root: Path) -> Store:
+    try:
+        return _open(root)
+    except NoCortex as exc:
+        raise NoCortex(f"No cortex named {name}. Run angularai --name {name} init.") from exc
+
+
+def _cortexes() -> int:
+    names = list_names(os.environ)
+    if not names:
+        print(f"No named cortexes in {cortex_home(os.environ)}.")
+        return 0
+    print("\n".join(names))
     return 0
 
 
@@ -243,13 +320,17 @@ def _status(store: Store) -> str:
     return cortex_status(store, os.environ)
 
 
-def _root(cortex: Path | None) -> Path:
+def _root(cortex: Path | None, name: str | None = None) -> Path:
+    if cortex is not None and name is not None:
+        raise InputRejected("Choose --cortex PATH or --name NAME, not both.")
     if cortex is not None:
         return cortex.expanduser()
+    if name is not None:
+        return named_root(name, os.environ)
     env = os.environ.get("ANGULARAI_CORTEX")
     if env:
         return Path(env).expanduser()
-    return Path.home() / ".angularai" / "default"
+    return cortex_home(os.environ) / DEFAULT
 
 
 def _kind(value: str) -> SubstrateKind:
@@ -262,14 +343,14 @@ def _kind(value: str) -> SubstrateKind:
     raise AngularAIError(f"Unknown substrate {value}.")
 
 
-def _extract_cortex(argv: list[str]) -> tuple[Path | None, list[str]]:
+def _extract_cortex(argv: list[str]) -> tuple[Path | None, str | None, list[str]]:
     pre = argparse.ArgumentParser(prog="angularai", add_help=False)
     pre.add_argument("--cortex", type=Path, default=None)
+    pre.add_argument("--name", default=None)
     known, rest = pre.parse_known_args(argv)
-    cortex = known.cortex
-    if isinstance(cortex, Path):
-        return cortex, rest
-    return None, rest
+    cortex = known.cortex if isinstance(known.cortex, Path) else None
+    name = known.name if isinstance(known.name, str) else None
+    return cortex, name, rest
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -280,7 +361,8 @@ def _parser() -> argparse.ArgumentParser:
             "With no command, a terminal opens the session. "
             "angularai say is one turn. angularai agent works a directory, one tool a pass. "
             "The reply is the only thing either prints. "
-            "--cortex PATH can be placed anywhere. The default cortex is ~/.angularai/default."
+            "--cortex PATH can be placed anywhere. The default cortex is ~/.angularai/default. "
+            "--name NAME is the cortex NAME beside it, and can be placed anywhere too."
         ),
     )
     parser.add_argument("--version", action="version", version=f"angularai {__version__}")
@@ -305,6 +387,18 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Let the agent start allowlisted programs. Off by default.",
     )
+
+    ask_parser = sub.add_parser("ask", help="Ask another cortex one question.")
+    ask_parser.add_argument("--to", required=True, metavar="NAME")
+    ask_parser.add_argument("text", nargs="+")
+
+    talk = sub.add_parser("converse", help="Let this cortex and another take turns.")
+    talk.add_argument("--with", dest="peer", required=True, metavar="NAME")
+    talk.add_argument("--turns", type=int, default=DEFAULT_TURNS)
+    talk.add_argument("--tokens", type=int, default=DEFAULT_TOKENS)
+    talk.add_argument("text", nargs="+")
+
+    sub.add_parser("cortexes", help="List the named cortexes.")
 
     sub.add_parser("cortex", help="List what the cortex currently knows.")
     recall = sub.add_parser(
