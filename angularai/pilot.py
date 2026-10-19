@@ -15,6 +15,7 @@ from angularai.models import (
     Workspace,
 )
 from angularai.secrets import contains_secret, redact
+from angularai.semantic import SemanticRecall
 from angularai.store import Store
 from angularai.substrate import Substrate
 
@@ -28,14 +29,20 @@ def pass_turn(
     secrets: tuple[str, ...] = (),
     system: str | None = None,
     record: str | None = None,
+    recall: SemanticRecall | None = None,
 ) -> TurnResult:
-    """One pass. record, when given, is what the log keeps in place of the input."""
+    """One pass. record, when given, is what the log keeps in place of the input.
+
+    recall, when given, adds traces that match by meaning. It never stops the pass.
+    """
 
     text = screen(user_text, secrets)
 
     config = store.config()
     prompt = SYSTEM if system is None else system
-    workspace = assemble(store.view(), text, config, prompt)
+    view = store.view()
+    meaning = None if recall is None else recall.ranks(view, text)
+    workspace = assemble(view, text, config, prompt, meaning)
     try:
         integration = substrate.integrate(workspace)
     except SubstrateError as exc:
@@ -57,7 +64,10 @@ def pass_turn(
         for draft in integration.remember
         if lock.judge(draft.text, config.forbid, secrets).allowed
     )
-    store.append_pass(_ok_pass(kept, reply, drafts, integration, workspace, secrets))
+    written = _ok_pass(kept, reply, drafts, integration, workspace, secrets)
+    store.append_pass(written)
+    if recall is not None:
+        recall.index(written.remember)
     return TurnResult(reply, False, workspace.estimated_tokens, workspace.budget, integration.act)
 
 

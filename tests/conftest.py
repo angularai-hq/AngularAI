@@ -27,3 +27,11 @@ def no_real_retry_wait(monkeypatch: pytest.MonkeyPatch) -> None:
         raise AssertionError(f"a test waited {seconds} real seconds for a retry")
 
     monkeypatch.setattr("angularai.provider._sleep", refuse)
+
+
+@pytest.fixture(autouse=True)
+def no_real_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Recall by meaning is off in every test unless the test turns it on itself."""
+
+    for name in ("ANGULARAI_EMBEDDINGS", "ANGULARAI_EMBEDDINGS_MODEL", "ANGULARAI_EMBEDDINGS_MIN"):
+        monkeypatch.delenv(name, raising=False)

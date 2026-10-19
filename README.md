@@ -61,7 +61,7 @@ The layer names come from Thameleon's CLASP model. The hardware stays hardware. 
 | found | The notebook is blue. |
 | missed | What shade is it? |
 
-Lexical attention. Paraphrase waits.
+Lexical attention by default. `ANGULARAI_EMBEDDINGS` adds recall by meaning.
 
 ## Install
 
@@ -138,7 +138,7 @@ No. It is a cortex in front of a model API. OpenAI, Anthropic, or a compatible e
 <details>
 <summary>What does the model see?</summary>
 
-A workspace that fits the budget: the traces and episodes that share words with the question, and nothing else. The rest stays on disk.
+A workspace that fits the budget: the traces and episodes that share words with the question, and, with embeddings on, the traces closest in meaning. Nothing else. The rest stays on disk.
 
 </details>
 
@@ -170,7 +170,22 @@ No. `/clear` clears the screen. The cortex stays on disk.
 <details>
 <summary>What comes back later?</summary>
 
-“What color is the notebook?” finds “The notebook is blue.” “What shade is it?” does not, until a later version embeds traces.
+“What color is the notebook?” finds “The notebook is blue.” “What shade is it?” shares no word with it and does not. With embeddings on, “When is lunch?” finds “Catering is at noon.” by meaning. “What shade is it?” names no notebook. With OpenAI's `text-embedding-3-small` it scores 0.25, under the 0.35 a match needs, so it still misses.
+
+</details>
+
+<details>
+<summary>What does recall by meaning send?</summary>
+
+Nothing, unless `ANGULARAI_EMBEDDINGS` is set. Then `say`, the session's turns, and `angularai recall` send the question and each trace not yet embedded, redacted, to the embeddings endpoint. Episodes and tool output are not sent. A trace is embedded once. A trace whose cosine with the question is 0.35 or more ranks by that, at most 8 of them, and is sent to the model only if it fits the budget. In `recall` its score shows as `~0.49`. `angularai recall --lexical`, `/recall` in the session, and `angularai agent` match words only.
+
+| variable | default | |
+| --- | --- | --- |
+| `ANGULARAI_EMBEDDINGS` | `off` | `openai`: `OPENAI_API_KEY`, `text-embedding-3-small` at 512 dimensions. `compatible`: the cortex's `--base-url` and `ANGULARAI_API_KEY`. |
+| `ANGULARAI_EMBEDDINGS_MODEL` | `text-embedding-3-small` | |
+| `ANGULARAI_EMBEDDINGS_MIN` | 0.35 | 0–1 |
+
+Vectors are lines in `embeddings.jsonl` in the cortex, keyed by trace, model, and a digest of the redacted text. It is a cache: delete it and it is rebuilt. A request waits at most 20 seconds and is tried twice. No key, no network, or an answer without vectors: you are told once on stderr, and recall stays lexical. The pass goes on.
 
 </details>
 

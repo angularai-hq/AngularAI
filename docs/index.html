@@ -135,7 +135,7 @@
             <tr><td>found</td><td>The notebook is blue.</td></tr>
             <tr><td>missed</td><td>What shade is it?</td></tr>
           </table>
-          <p class="dim note">Lexical attention. Paraphrase waits.</p>
+          <p class="dim note">Lexical attention by default. <code>ANGULARAI_EMBEDDINGS</code> adds recall by meaning.</p>
         </div>
       </article>
     </section>
@@ -162,7 +162,7 @@
       </details>
       <details>
         <summary>What does the model see?</summary>
-        <p>A workspace that fits the budget: the traces and episodes that share words with the question, and nothing else. The rest stays on disk.</p>
+        <p>A workspace that fits the budget: the traces and episodes that share words with the question, and, with embeddings on, the traces closest in meaning. Nothing else. The rest stays on disk.</p>
       </details>
       <details>
         <summary>Where does the memory live?</summary>
@@ -174,7 +174,7 @@
       </details>
       <details>
         <summary>What comes back later?</summary>
-        <p>“What color is the notebook?” finds “The notebook is blue.” “What shade is it?” does not, until a later version embeds traces.</p>
+        <p>“What color is the notebook?” finds “The notebook is blue.” “What shade is it?” shares no word with it and does not. With embeddings on, “When is lunch?” finds “Catering is at noon.” by meaning. “What shade is it?” names no notebook. With OpenAI's <code>text-embedding-3-small</code> it scores 0.25, under the 0.35 a match needs, so it still misses.</p>
       </details>
     </section>
   </main>

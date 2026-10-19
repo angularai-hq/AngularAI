@@ -47,7 +47,7 @@ endobj
 endobj
 8 0 obj
 <<
-/Author (Teodor Walter Vido) /CreationDate (D:20261019192440+02'00') /Creator (\(unspecified\)) /Keywords () /ModDate (D:20261019192440+02'00') /Producer (ReportLab PDF Library - \(opensource\)) 
+/Author (Teodor Walter Vido) /CreationDate (D:20261019194637+02'00') /Creator (\(unspecified\)) /Keywords () /ModDate (D:20261019194637+02'00') /Producer (ReportLab PDF Library - \(opensource\)) 
   /Subject (\(unspecified\)) /Title (AngularAI) /Trapped /False
 >>
 endobj
@@ -283,7 +283,7 @@ endstream
 endobj
 11 0 obj
 <<
-/Length 3738
+/Length 3867
 >>
 stream
 1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
@@ -379,14 +379,14 @@ BT 1 0 0 1 0 2.5 Tm /F3 8.5 Tf 11 TL (Figure 2. One question, after the fact is 
 Q
 Q
 q
-1 0 0 1 70 561.8898 cm
+1 0 0 1 70 546.8898 cm
 q
 0 0 0 rg
-BT 1 0 0 1 0 49.5 Tm /F1 10.5 Tf 15 TL -0.032432 Tw (Recall is that same overlap. What color is the notebook? meets The notebook is blue. What shade) Tj T* 0 Tw .525321 Tw (is it? does not. A long episode is stored in full. The call is shown the sentences that share words) Tj T* 0 Tw 1.207906 Tw (with the question, and the opening stretch when none do. One pass keeps at most twenty-four) Tj T* 0 Tw (traces. Each trace is at most two hundred and forty characters.) Tj T* ET
+BT 1 0 0 1 0 64.5 Tm /F1 10.5 Tf 15 TL -0.032432 Tw (Recall is that same overlap. What color is the notebook? meets The notebook is blue. What shade) Tj T* 0 Tw .160706 Tw (is it? does not. With ANGULARAI_EMBEDDINGS set, a trace can also be found by meaning, and) Tj T* 0 Tw 1.22933 Tw (it still enters only if it fits. A long episode is stored in full. The call is shown the sentences that) Tj T* 0 Tw .804287 Tw (share words with the question, and the opening stretch when none do. One pass keeps at most) Tj T* 0 Tw (twenty-four traces. Each trace is at most two hundred and forty characters.) Tj T* ET
 Q
 Q
 q
-1 0 0 1 70 488.8898 cm
+1 0 0 1 70 473.8898 cm
 0 0 0 RG
 .8 w
 1 1 1 rg
@@ -399,28 +399,28 @@ BT 1 0 0 1 0 8 Tm (this call) Tj T* ET
 BT 1 0 0 1 398.8036 8 Tm (the rest, on disk) Tj T* ET
 Q
 q
-1 0 0 1 70 474.8898 cm
+1 0 0 1 70 459.8898 cm
 q
 .32 .32 .32 rg
 BT 1 0 0 1 0 2.5 Tm /F3 8.5 Tf 11 TL (Figure 3. The budget. The filled part is one call. The open part stayed on disk.) Tj T* ET
 Q
 Q
 q
-1 0 0 1 70 449.8898 cm
+1 0 0 1 70 434.8898 cm
 q
 0 0 0 rg
 BT 1 0 0 1 0 3 Tm /F2 12 Tf 15 TL (The session) Tj T* ET
 Q
 Q
 q
-1 0 0 1 70 396.8898 cm
+1 0 0 1 70 381.8898 cm
 q
 0 0 0 rg
 BT 1 0 0 1 0 34.5 Tm /F1 10.5 Tf 15 TL .965741 Tw (In a terminal, angularai opens this cortex. The transcript is the sitting. The status line is the last) Tj T* 0 Tw -0.031776 Tw (pass: which model, how much of the budget was sent, how many traces are current. angularai say) Tj T* 0 Tw (is one turn with no screen. The reply is the only thing it prints.) Tj T* ET
 Q
 Q
 q
-1 0 0 1 70 357.8898 cm
+1 0 0 1 70 342.8898 cm
 q
 0 0 0 rg
 BT 1 0 0 1 0 19.5 Tm /F1 10.5 Tf 15 TL 2.170508 Tw (The directory is ~/.angularai/default unless you point elsewhere. cortex.json is the wiring, the) Tj T* 0 Tw (budget, and the locks. passes.jsonl is the life. It is append-only, and it is readable only by you.) Tj T* ET
@@ -446,7 +446,7 @@ xref
 trailer
 <<
 /ID 
-[<104529d0edd1aca28ef97c35c00749a9><104529d0edd1aca28ef97c35c00749a9>]
+[<467d0a84a2e4f5c2e464c3f55a893cbd><467d0a84a2e4f5c2e464c3f55a893cbd>]
 % ReportLab generated PDF document -- digest (opensource)
 
 /Info 8 0 R
@@ -454,5 +454,5 @@ trailer
 /Size 12
 >>
 startxref
-11325
+11454
 %%EOF

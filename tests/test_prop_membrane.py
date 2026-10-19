@@ -117,3 +117,26 @@ def test_clip_fits_and_is_idempotent(text: str, limit: int) -> None:
     once = _clip(text, limit)
     assert len(once) <= limit
     assert _clip(once, limit) == once
+
+
+@given(
+    traces,
+    episodes,
+    texts | words | mixed,
+    st.integers(1, 4000),
+    st.dictionaries(st.sampled_from([f"t{index}" for index in range(60)]), st.floats(0, 1)),
+)
+def test_traces_found_by_meaning_still_fit_the_budget(
+    found: list[Trace], said: list[Episode], text: str, budget: int, meaning: dict[str, float]
+) -> None:
+    config = replace(default_config(), workspace_budget=budget, max_input_tokens=4000)
+    view = CortexView(tuple(found), tuple(said))
+    try:
+        workspace = assemble(view, text, config, meaning=meaning)
+    except InputDoesNotFit:
+        return
+    assert workspace.estimated_tokens <= budget
+    real = estimate_tokens(workspace.system) + estimate_tokens(workspace.user)
+    assert real == workspace.estimated_tokens
+    # A rank for an id that is not a trace sends nothing.
+    assert set(workspace.trace_ids) <= {trace.id for trace in found}
