@@ -38,7 +38,7 @@ Traces and episodes. A superseded line stays in the file and leaves the workspac
 
 ### A budget
 
-Four characters to one token, rounded up. AngularAI enforces that estimate. The file may outgrow it. The call may not.
+Four ASCII characters to one token. A wide character (CJK, kana, Hangul, fullwidth) is one; one above U+FFFF, like most emoji, is two. Any other character is half. Rounded up. AngularAI enforces that estimate. The file may outgrow it. The call may not.
 
 </td>
 <td width="33%" valign="top">
