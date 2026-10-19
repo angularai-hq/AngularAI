@@ -34,7 +34,7 @@ jobs:
           enable-cache: true
 
       - name: sync
-        run: uv sync --locked --all-extras --dev
+        run: uv sync --locked --all-packages --all-extras --dev
 
       - name: ruff check
         run: uv run ruff check
@@ -51,4 +51,26 @@ jobs:
         run: uv run pytest --cov --cov-fail-under=80
 
       - name: build
+        run: uv build
+
+      - name: mcp ruff check
+        working-directory: packages/angularai-mcp
+        run: uv run --locked ruff check
+
+      - name: mcp ruff format
+        working-directory: packages/angularai-mcp
+        run: uv run --locked ruff format --check
+
+      - name: mcp mypy
+        working-directory: packages/angularai-mcp
+        run: uv run --locked mypy
+
+      - name: mcp pytest
+        working-directory: packages/angularai-mcp
+        env:
+          HYPOTHESIS_PROFILE: ci
+        run: uv run --locked pytest --cov --cov-fail-under=80
+
+      - name: mcp build
+        working-directory: packages/angularai-mcp
         run: uv build

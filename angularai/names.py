@@ -61,6 +61,22 @@ def named_root(name: str, environ: Mapping[str, str]) -> Path:
     return root
 
 
+def resolve_root(cortex: Path | None, name: str | None, environ: Mapping[str, str]) -> Path:
+    """The cortex a command works on: --cortex PATH, else --name NAME, else
+    ANGULARAI_CORTEX, else the default cortex in the home. Not both flags."""
+
+    if cortex is not None and name is not None:
+        raise InputRejected("Choose --cortex PATH or --name NAME, not both.")
+    if cortex is not None:
+        return cortex.expanduser()
+    if name is not None:
+        return named_root(name, environ)
+    env = environ.get("ANGULARAI_CORTEX")
+    if env:
+        return Path(env).expanduser()
+    return cortex_home(environ) / DEFAULT
+
+
 def label(root: Path) -> str:
     """The name a cortex gives in a conversation: its directory's, when that is a name."""
 

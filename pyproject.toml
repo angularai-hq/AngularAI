@@ -41,6 +41,12 @@ dev = [
 [tool.hatch.build.targets.wheel]
 packages = ["angularai"]
 
+[tool.hatch.build.targets.sdist]
+exclude = ["packages"]
+
+[tool.uv.workspace]
+members = ["packages/angularai-mcp"]
+
 [tool.ruff]
 target-version = "py312"
 line-length = 100

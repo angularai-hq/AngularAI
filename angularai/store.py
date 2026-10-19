@@ -8,12 +8,12 @@ fsynced line per pass for the log.
 import hashlib
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal
 
 from angularai.durable import append_line, atomic_write, fsync_dir, locked
-from angularai.errors import ConfigError, CortexExists, LogDamaged, NoCortex
+from angularai.errors import ConfigError, CortexExists, LogDamaged, NoCortex, TraceNotFound
 from angularai.models import (
     Config,
     CortexView,
@@ -251,6 +251,48 @@ class Store:
         self._warned = False
         return Repair(moved=len(bad), kept=sum(1 for line in good if line.strip()))
 
+    def forget(self, trace_id: str) -> Trace:
+        """Remove one trace from the log, and return it as it was written.
+
+        The trace leaves the line of the pass that wrote it, and every supersede that
+        names it goes too. A pass that only noted it (see angularai.notes) goes whole.
+        Every other byte stays: an unreadable line, a torn last line, other passes.
+        The log is rewritten with atomic_write under the lock. An episode that mentions
+        the trace in its own words is kept. Raises TraceNotFound, and writes nothing,
+        when no readable pass holds that id.
+        """
+
+        path = self.root / LOG
+        with locked(self.root):
+            lines = _read_log(path).split(b"\n")
+            kept: list[bytes] = []
+            found: Trace | None = None
+            for number, line in enumerate(lines[:-1], start=1):
+                record = _parse(line, number) if line.strip() else None
+                if record is None:
+                    kept.append(line)
+                    continue
+                gone = next((t for t in record.remember if t.id == trace_id), None)
+                named = any(old_id == trace_id for old_id, _ in record.supersede)
+                if gone is None and not named:
+                    kept.append(line)
+                    continue
+                found = found or gone
+                left = replace(
+                    record,
+                    remember=tuple(t for t in record.remember if t.id != trace_id),
+                    supersede=tuple(pair for pair in record.supersede if pair[0] != trace_id),
+                )
+                if gone is not None and _only_noted(left, gone):
+                    continue
+                kept.append(json.dumps(_pass_json(left), ensure_ascii=False).encode("utf-8"))
+            if found is None:
+                raise TraceNotFound("No trace in this cortex has that id. Nothing was removed.")
+            kept.append(lines[-1])
+            atomic_write(path, b"\n".join(kept))
+        self._reset()
+        return found
+
     def _reset(self) -> None:
         self._offset = 0
         self._lines = 0
@@ -287,6 +329,19 @@ class Store:
         self._digest = _digest(data[: self._offset])
         tail = fresh[end:]
         self._torn = Damage(self._lines + 1, "torn") if tail.strip() else None
+
+
+def _only_noted(left: PassRecord, gone: Trace) -> bool:
+    """A pass that did nothing but note this trace: no reply, no peer, its words."""
+
+    return (
+        left.outcome == "ok"
+        and left.reply is None
+        and left.peer is None
+        and not left.remember
+        and not left.supersede
+        and left.user == gone.text
+    )
 
 
 def damage_notice(damage: tuple[Damage, ...]) -> str:
