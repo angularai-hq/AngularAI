@@ -1,5 +1,5 @@
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Literal
 
@@ -35,8 +35,13 @@ def assemble(
     user_text: str,
     config: Config,
     system: str = SYSTEM,
+    meaning: Mapping[str, float] | None = None,
 ) -> Workspace:
-    """Pack L2. Anything that does not fit stays on disk and is not sent."""
+    """Pack L2. Anything that does not fit stays on disk and is not sent.
+
+    meaning maps a trace id to a rank by meaning (a cosine). A trace ranks by the
+    higher of that and its lexical score. Either way it is sent only if it fits.
+    """
 
     text = user_text.strip()
     if estimate_tokens(text) > config.max_input_tokens:
@@ -59,7 +64,9 @@ def assemble(
             "Shorten it, or raise the budget with angularai budget."
         )
 
-    ranked = sorted(_candidates(view, text), key=lambda item: (item.rank, item.at), reverse=True)
+    ranked = sorted(
+        _candidates(view, text, meaning or {}), key=lambda item: (item.rank, item.at), reverse=True
+    )
     chosen_traces: list[_Candidate] = []
     chosen_episodes: list[_Candidate] = []
     for candidate in ranked:
@@ -117,13 +124,14 @@ def _with_continuity(
     return chosen_episodes
 
 
-def _candidates(view: CortexView, query: str) -> tuple[_Candidate, ...]:
+def _candidates(
+    view: CortexView, query: str, meaning: Mapping[str, float]
+) -> tuple[_Candidate, ...]:
     items: list[_Candidate] = []
     for trace in view.current_traces():
         document = " ".join((trace.text, " ".join(trace.wavelengths), trace.source))
-        items.append(
-            _Candidate("trace", score(query, document), trace.at, _trace_line(trace), trace.id)
-        )
+        rank = max(score(query, document), meaning.get(trace.id, 0.0))
+        items.append(_Candidate("trace", rank, trace.at, _trace_line(trace), trace.id))
     for episode in view.episodes:
         items.append(_episode_candidate(episode, score(query, _episode_document(episode)), query))
     return tuple(items)

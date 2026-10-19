@@ -8,10 +8,11 @@ from typing import Literal
 from angularai import __version__
 from angularai.agent import run_agent
 from angularai.configure import add_lock, remove_lock, set_budget, wire
-from angularai.errors import AngularAIError
+from angularai.errors import AngularAIError, KeyMissing
 from angularai.models import SubstrateKind
 from angularai.pilot import pass_turn, screen
 from angularai.present import format_banner, format_locks, format_recall, format_traces
+from angularai.semantic import SemanticRecall, embedder_from_env, minimum_from_env
 from angularai.session import cortex_status, session_command
 from angularai.store import CORRUPT, Store, init_cortex, open_store
 from angularai.substrate import build_substrate, key_env, secret_values
@@ -57,8 +58,7 @@ def _dispatch(args: argparse.Namespace, cortex: Path | None) -> int:
         print(format_traces(_open(root).view()))
         return 0
     if command == "recall":
-        print(format_recall(_open(root).view(), " ".join(args.query)))
-        return 0
+        return _recall(_open(root), " ".join(args.query), args.lexical)
     if command == "status":
         print(_status(_open(root)))
         return 0
@@ -132,6 +132,33 @@ def _agent(root: Path, args: argparse.Namespace) -> int:
         print("The step budget is spent.", file=sys.stderr)
     print(result.reply)
     return 0
+
+
+def _recall(store: Store, query: str, lexical: bool) -> int:
+    view = store.view()
+    recall = None if lexical else _semantic(store)
+    meaning = None if recall is None else recall.ranks(view, query)
+    print(format_recall(view, query, meaning=meaning))
+    return 0
+
+
+def _semantic(store: Store) -> SemanticRecall | None:
+    """Recall by meaning, when ANGULARAI_EMBEDDINGS turns it on. A missing key is a note."""
+
+    def warn(notice: str) -> None:
+        print(notice, file=sys.stderr)
+
+    minimum = minimum_from_env(os.environ)
+    try:
+        embedder = embedder_from_env(store.config(), os.environ)
+    except KeyMissing as exc:
+        warn(f"Embeddings are unavailable: {exc} Recall is lexical.")
+        return None
+    if embedder is None:
+        return None
+    return SemanticRecall(
+        store.root, embedder, minimum=minimum, secrets=secret_values(os.environ), warn=warn
+    )
 
 
 def _budget(root: Path, tokens: int | None) -> int:
@@ -208,7 +235,7 @@ def _speak(store: Store, text: str) -> str:
     secrets = secret_values(os.environ)
     screen(text, secrets)
     substrate = build_substrate(store.config(), os.environ)
-    result = pass_turn(store, substrate, text, secrets)
+    result = pass_turn(store, substrate, text, secrets, recall=_semantic(store))
     return result.reply
 
 
@@ -280,8 +307,12 @@ def _parser() -> argparse.ArgumentParser:
     )
 
     sub.add_parser("cortex", help="List what the cortex currently knows.")
-    recall = sub.add_parser("recall", help="Find traces without calling a model.")
+    recall = sub.add_parser(
+        "recall",
+        help="Find traces. Lexical, and by meaning when ANGULARAI_EMBEDDINGS is set.",
+    )
     recall.add_argument("query", nargs="+")
+    recall.add_argument("--lexical", action="store_true", help="Match words only. Nothing is sent.")
     sub.add_parser("status", help="Show the budget and the last pass.")
     sub.add_parser("repair", help="Move unreadable log lines to passes.jsonl.corrupt.")
 

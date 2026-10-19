@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from pathlib import Path
 
 from angularai.attention import score
@@ -20,20 +21,30 @@ def format_traces(view: CortexView) -> str:
     return "\n".join(_trace_line(trace) for trace in current)
 
 
-def format_recall(view: CortexView, query: str, limit: int = 20) -> str:
-    ranked: list[tuple[float, Trace]] = []
+def format_recall(
+    view: CortexView,
+    query: str,
+    limit: int = 20,
+    meaning: Mapping[str, float] | None = None,
+) -> str:
+    """Lexical ranks as 0.50. A trace found only by meaning shows its cosine as ~0.64."""
+
+    similar = meaning or {}
+    ranked: list[tuple[float, str, Trace]] = []
     for trace in view.current_traces():
         document = " ".join((trace.text, " ".join(trace.wavelengths), trace.source))
         rank = score(query, document)
         if rank > 0:
-            ranked.append((rank, trace))
+            ranked.append((rank, f"{rank:.2f}", trace))
+        elif trace.id in similar:
+            ranked.append((similar[trace.id], f"~{similar[trace.id]:.2f}", trace))
     ranked.sort(key=lambda item: item[0], reverse=True)
     if not ranked:
         return "Nothing in the cortex matches that."
     lines: list[str] = []
-    for rank, trace in ranked[:limit]:
+    for _, shown, trace in ranked[:limit]:
         waves = ",".join(trace.wavelengths) if trace.wavelengths else "-"
-        lines.append(f"{trace.id}  {rank:.2f}  {waves}  {trace.text}")
+        lines.append(f"{trace.id}  {shown}  {waves}  {trace.text}")
     return "\n".join(lines)
 
 

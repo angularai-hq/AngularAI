@@ -112,7 +112,9 @@ _WRITE = (
     "and the episodes. A trace the model was not shown cannot be superseded. "
     "A superseded trace stays in the file and leaves the workspace.",
     "Recall is that same overlap. What color is the notebook? meets The notebook is blue. "
-    "What shade is it? does not. A long episode is stored in full. The call is shown "
+    "What shade is it? does not. With ANGULARAI_EMBEDDINGS set, a trace can also be found "
+    "by meaning, and it still enters only if it fits. A long episode is stored in full. "
+    "The call is shown "
     "the sentences that share words with the question, and the opening stretch when none do. "
     "One pass keeps at most twenty-four traces. "
     "Each trace is at most two hundred and forty characters.",
