@@ -126,6 +126,27 @@ The model does not receive the tree. It receives the task, the last tool, and th
 
 `--cortex PATH` can sit anywhere on the command. `ANGULARAI_CORTEX` does the same.
 
+## Talk
+
+```bash
+angularai --name bo init
+angularai --name bo wire anthropic --model <model>
+angularai ask --to bo "When is the launch?"
+angularai converse --with bo --turns 4 "Plan the launch with bo."
+```
+
+A name is a cortex beside the default one: `--name bo` is `~/.angularai/bo`, and the default cortex is the one named `default`. `ANGULARAI_HOME` moves the directory. It must be absolute. A name is 1 to 32 lowercase letters, digits, `-`, or `_`, starting with a letter or a digit. A slash, a dot, `..`, an upper-case letter, or a link in place of the directory is refused, and nothing is created. `--name NAME` can sit anywhere on the command, like `--cortex`, and not with it. `angularai cortexes` lists the names.
+
+`ask` sends one question to the named cortex. It answers from its own traces, inside its own budget, on its own model and key. Yours runs no model. The reply is the only line on stdout.
+
+`converse` lets the two take turns. Yours answers you first. Its reply goes to the other, and each reply after that to the one who did not speak. A turn is one pass. `--turns` is 4, at most 12. `--tokens` is 12,000, from 256 to 100,000: the estimated tokens of every workspace sent. A turn starts only if the other's whole budget still fits under it, so the sum never passes it. Each line is `name  reply` on stdout. Why it stopped is on stderr.
+
+Neither cortex opens the other's files. Only a message crosses: its text and the sender's name. A message is judged by both locks, the sender's on the way out and the receiver's on the way in. A secret or a locked phrase holds it. A held question is not sent and nothing is written. A held answer reaches you as `Value lock held this reply.` A held turn ends the conversation, and so does one that does not fit the other's input cap.
+
+Each cortex writes the passes it took part in, with the other's name and its role: `asked`, `answered`, or `opened`. A cortex chosen by `--cortex PATH` gives its directory's name when that is a name, else `cortex`. In the next workspace the other's words are labelled `cortex bo`, never `you`. A trace learned from another cortex names it as its source. Another cortex can add to what this one knows. It cannot supersede a trace. A log line without a peer reads as before.
+
+No server, no socket. Both sides run in one process, on the provider calls each already makes. Each write takes the lock of its own cortex and none is held across a call, so two cortexes, or two conversations, run at once.
+
 ## Questions
 
 <details>
@@ -145,7 +166,7 @@ A workspace that fits the budget: the traces and episodes that share words with 
 <details>
 <summary>Where does the memory live?</summary>
 
-In `~/.angularai/default`, readable only by you. The key is not written there.
+In `~/.angularai/default`, readable only by you. A named cortex is beside it, in `~/.angularai/<name>`. The key is not written there.
 
 </details>
 
@@ -232,6 +253,6 @@ uv build
 
 CI runs the same five on Linux and macOS, Python 3.12 and 3.13, for every pull request and every push to main. Coverage under 80% fails.
 
-`tests/test_prop_*.py` are Hypothesis properties: the budget, secrets, the lock, the sandbox, the log, and the provider layer. `HYPOTHESIS_PROFILE=ci` runs more examples from a fixed seed, as CI does. The default is `dev`.
+`tests/test_prop_*.py` are Hypothesis properties: the budget, secrets, the lock, the sandbox, the log, the provider layer, and cortexes that talk. `HYPOTHESIS_PROFILE=ci` runs more examples from a fixed seed, as CI does. The default is `dev`.
 
 The invariant is `tests/test_membrane.py`, and for the agent `tests/test_agent.py`. A fact from the start of a long life is in the workspace, an unrelated episode that would have fit is not, and every call stays inside the budget. The agent reads the file it asked for. The file it did not ask for is not sent.

@@ -8,7 +8,7 @@ from pathlib import Path
 from hypothesis import example, given
 from hypothesis import strategies as st
 
-from angularai.models import PassRecord, Trace
+from angularai.models import PassRecord, Peer, Trace
 from angularai.store import CORRUPT, LOG, _pass_json, init_cortex, open_store
 
 text = st.text(min_size=1, max_size=60)
@@ -40,6 +40,17 @@ record = st.builds(
     traces_held=stat,
     episodes_shown=stat,
     episodes_held=stat,
+    peer=st.none()
+    | st.builds(
+        Peer,
+        name=st.from_regex(r"[a-z0-9][a-z0-9_-]{0,31}", fullmatch=True).filter(
+            lambda name: (
+                name not in {"con", "prn", "aux", "nul"}
+                and not (name[:3] in {"com", "lpt"} and name[3:] in set("123456789"))
+            )
+        ),
+        role=st.sampled_from(["asked", "answered", "opened"]),
+    ),
 )
 # One line of garbage: any bytes but a newline.
 garbage = st.binary(max_size=200).map(lambda raw: raw.replace(b"\n", b"")) | st.sampled_from(

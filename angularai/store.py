@@ -20,10 +20,13 @@ from angularai.models import (
     Episode,
     Outcome,
     PassRecord,
+    Peer,
+    PeerRole,
     SubstrateKind,
     Trace,
     TraceState,
 )
+from angularai.names import valid_name
 from angularai.urls import validate_base_url
 
 # The layout this code writes. A cortex without a version field is version 1.
@@ -321,7 +324,7 @@ def fold(records: tuple[PassRecord, ...]) -> CortexView:
     order: list[str] = []
     episodes: list[Episode] = []
     for record in records:
-        episodes.append(Episode(record.at, record.user, record.reply, record.outcome))
+        episodes.append(Episode(record.at, record.user, record.reply, record.outcome, record.peer))
         for old_id, by in record.supersede:
             previous = traces.get(old_id)
             if previous is None or previous.state != "current":
@@ -435,6 +438,14 @@ def _forbid(value: object) -> tuple[str, ...]:
 
 
 def _pass_json(record: PassRecord) -> dict[str, object]:
+    payload = _base_json(record)
+    if record.peer is not None:
+        # Only a pass that crossed carries it, so a log of single passes is unchanged.
+        payload["peer"] = {"name": record.peer.name, "role": record.peer.role}
+    return payload
+
+
+def _base_json(record: PassRecord) -> dict[str, object]:
     return {
         "at": record.at,
         "outcome": record.outcome,
@@ -500,7 +511,27 @@ def _pass_from(payload: dict[object, object]) -> PassRecord:
         traces_held=_stat(payload.get("traces_held")),
         episodes_shown=_stat(payload.get("episodes_shown")),
         episodes_held=_stat(payload.get("episodes_held")),
+        peer=_peer_from(payload.get("peer")) if "peer" in payload else None,
     )
+
+
+def _peer_from(value: object) -> Peer:
+    if not isinstance(value, dict) or set(value) != {"name", "role"}:
+        raise ValueError("peer")
+    name = value.get("name")
+    if not isinstance(name, str) or not valid_name(name):
+        raise ValueError("peer")
+    return Peer(name=name, role=_role(value.get("role")))
+
+
+def _role(value: object) -> PeerRole:
+    if value == "asked":
+        return "asked"
+    if value == "answered":
+        return "answered"
+    if value == "opened":
+        return "opened"
+    raise ValueError("role")
 
 
 def _outcome(value: str) -> Outcome:

@@ -164,10 +164,22 @@ def _trace_line(trace: Trace) -> str:
 
 
 def _episode_line(episode: Episode, query: str) -> str:
-    you = f"you  {focus(episode.user, query, 700)}\n"
+    asker, answerer = _speakers(episode)
+    you = f"{asker}  {focus(episode.user, query, 700)}\n"
     if episode.reply is None:
         return you
-    return you + f"angularai  {focus(episode.reply, query, 400)}\n"
+    return you + f"{answerer}  {focus(episode.reply, query, 400)}\n"
+
+
+def _speakers(episode: Episode) -> tuple[str, str]:
+    """Who said each half. A peer is named, so its words are never taken for yours."""
+
+    peer = episode.peer
+    if peer is None or peer.role == "opened":
+        return "you", "angularai"
+    if peer.role == "asked":
+        return "you", f"cortex {peer.name}"
+    return f"cortex {peer.name}", "angularai"
 
 
 def focus(text: str, query: str, limit: int) -> str:

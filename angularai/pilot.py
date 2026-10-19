@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -9,6 +10,7 @@ from angularai.models import (
     Integration,
     Outcome,
     PassRecord,
+    Peer,
     Trace,
     TraceDraft,
     TurnResult,
@@ -30,10 +32,14 @@ def pass_turn(
     system: str | None = None,
     record: str | None = None,
     recall: SemanticRecall | None = None,
+    peer: Peer | None = None,
 ) -> TurnResult:
     """One pass. record, when given, is what the log keeps in place of the input.
 
     recall, when given, adds traces that match by meaning. It never stops the pass.
+    peer, when given, is written with the pass. When the input came from the peer
+    (answered), a trace names the peer as its source, and nothing is superseded:
+    another cortex can add to what this one knows, never make it forget.
     """
 
     text = screen(user_text, secrets)
@@ -46,7 +52,8 @@ def pass_turn(
     try:
         integration = substrate.integrate(workspace)
     except SubstrateError as exc:
-        store.append_pass(_error_pass(text if record is None else record, workspace, exc, secrets))
+        failed = _error_pass(text if record is None else record, workspace, exc, secrets)
+        store.append_pass(replace(failed, peer=peer))
         raise
 
     kept = text if record is None else record
@@ -55,7 +62,7 @@ def pass_turn(
     verdict = lock.judge(integration.reply, config.forbid, secrets, act)
     reply = Thinker(lock).release(verdict)
     if not verdict.allowed:
-        store.append_pass(_held_pass(kept, reply, workspace, secrets))
+        store.append_pass(replace(_held_pass(kept, reply, workspace, secrets), peer=peer))
         return TurnResult(reply, True, workspace.estimated_tokens, workspace.budget, None)
 
     # A trace is judged like the reply: a secret or a locked phrase is never remembered.
@@ -64,7 +71,9 @@ def pass_turn(
         for draft in integration.remember
         if lock.judge(draft.text, config.forbid, secrets).allowed
     )
-    written = _ok_pass(kept, reply, drafts, integration, workspace, secrets)
+    if peer is not None and peer.role == "answered":
+        integration = replace(integration, supersede=())
+    written = _ok_pass(kept, reply, drafts, integration, workspace, secrets, peer)
     store.append_pass(written)
     if recall is not None:
         recall.index(written.remember)
@@ -99,15 +108,19 @@ def _ok_pass(
     integration: Integration,
     workspace: Workspace,
     secrets: tuple[str, ...],
+    peer: Peer | None = None,
 ) -> PassRecord:
     now = _now()
     stored_user = _stored_user(text, secrets)
+    source = stored_user
+    if peer is not None and peer.role == "answered":
+        source = f"cortex {peer.name}: {stored_user}"
     traces = tuple(
         Trace(
             id=_trace_id(),
             text=draft.text,
             wavelengths=draft.wavelengths,
-            source=stored_user[:500],
+            source=source[:500],
             at=now,
             state="current",
             superseded_by=None,
@@ -116,7 +129,7 @@ def _ok_pass(
     )
     visible = set(workspace.trace_ids)
     supersede = tuple((trace_id, now) for trace_id in integration.supersede if trace_id in visible)
-    return _pass(
+    written = _pass(
         now,
         "ok",
         stored_user,
@@ -126,6 +139,7 @@ def _ok_pass(
         None,
         workspace,
     )
+    return replace(written, peer=peer)
 
 
 def _held_pass(text: str, reply: str, workspace: Workspace, secrets: tuple[str, ...]) -> PassRecord:
