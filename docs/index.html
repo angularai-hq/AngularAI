@@ -18,6 +18,7 @@
     <a class="brand" href="#top"><img src="logo.png" alt="">AngularAI</a>
     <nav aria-label="Page">
       <a href="#membrane">Membrane</a>
+      <a href="#mcp">MCP</a>
       <a href="angularai.pdf">Paper</a>
       <a href="https://github.com/angularai-hq/AngularAI">GitHub</a>
     </nav>
@@ -152,6 +153,20 @@
         </div>
       </article>
       <p class="label after">Then wire the API you already have. The key stays in the environment.</p>
+    </section>
+
+    <section class="install mcp" id="mcp">
+      <h2>MCP</h2>
+      <p class="lede">The cortex as an MCP server. Five tools: <code>remember</code>, <code>recall</code>, <code>forget</code>, <code>status</code>, <code>cortexes</code>. Stdio by default. <code>--http</code> serves streamable HTTP on 127.0.0.1.</p>
+      <article class="term command">
+        <header>
+          <span>terminal</span>
+        </header>
+        <div class="body">
+          <p>uvx --from "git+https://github.com/angularai-hq/AngularAI#subdirectory=packages/angularai-mcp" angularai-mcp</p>
+        </div>
+      </article>
+      <p class="label after">Claude Desktop, Claude Code, Codex, Cursor, or any MCP client. <a href="https://github.com/angularai-hq/AngularAI/tree/main/packages/angularai-mcp#setup">Setup for each client</a>.</p>
     </section>
 
     <section class="faq" id="questions">
