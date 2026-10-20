@@ -1,8 +1,12 @@
 import os
+from collections.abc import Iterator
 from datetime import timedelta
 
+import keyring
 import pytest
 from hypothesis import HealthCheck, settings
+
+from tests.setupfakes import FakeKeyring
 
 # HYPOTHESIS_PROFILE picks one. CI sets "ci": more examples, a fixed seed, no example
 # database, so a failure reproduces from the log alone. "dev" is the default.
@@ -50,5 +54,34 @@ def no_ambient_cortex_or_keys(monkeypatch: pytest.MonkeyPatch) -> None:
         "OPENAI_API_KEY",
         "ANTHROPIC_API_KEY",
         "ANGULARAI_API_KEY",
+        "ANGULARAI_MODEL",
     ):
         monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def fake_keyring_and_home(
+    monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory
+) -> Iterator[FakeKeyring]:
+    """No test reaches the OS keyring or the real ~/.angularai.
+
+    keyring gets an in-memory backend, and HOME is a fresh directory, so
+    ``Path.home() / ".angularai"`` is never the operator's.
+    """
+
+    monkeypatch.setenv("HOME", str(tmp_path_factory.mktemp("home")))
+    monkeypatch.delenv("PYTHON_KEYRING_BACKEND", raising=False)
+    previous = keyring.core._keyring_backend
+    fake = FakeKeyring()
+    keyring.set_keyring(fake)
+    try:
+        yield fake
+    finally:
+        keyring.core._keyring_backend = previous
+
+
+@pytest.fixture(autouse=True)
+def no_first_use_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A test that fakes a terminal never meets the setup offer unless it asks for it."""
+
+    monkeypatch.setattr("angularai.cli.offer_setup", lambda root: None)

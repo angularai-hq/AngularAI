@@ -12,6 +12,7 @@ license = "MIT"
 authors = [{ name = "Teodor Walter Vido" }]
 keywords = ["agents", "llm", "cli", "memory", "cortex"]
 dependencies = [
+    "keyring>=25.0",
     "textual>=2.1",
 ]
 

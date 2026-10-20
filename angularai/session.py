@@ -1,7 +1,9 @@
 from collections.abc import Mapping
 from typing import Literal
 
+from angularai.errors import AngularAIError
 from angularai.present import format_locks, format_recall, format_status, format_traces
+from angularai.profiles import effective_config, key_source
 from angularai.store import Store
 from angularai.substrate import key_env
 
@@ -54,14 +56,23 @@ def session_command(store: Store, line: str, status_text: str) -> tuple[SessionA
 
 
 def cortex_status(store: Store, environ: Mapping[str, str]) -> str:
-    config = store.config()
+    stored = store.config()
+    try:
+        config, profile = effective_config(stored, environ)
+    except AngularAIError:
+        config, profile = stored, None
     key_name = key_env(config.substrate) if config.substrate is not None else None
     key_set = bool(key_name and environ.get(key_name, "").strip())
-    return format_status(
+    text = format_status(
         root=store.root,
         config=config,
         view=store.view(),
         last=store.last_pass(),
-        key_name=key_name,
+        key_name=None if profile is not None else key_name,
         key_set=key_set,
     )
+    if profile is None:
+        return text
+    head, _, rest = text.partition("\n")
+    saved = f"saved model {profile.name}\nkey  {key_source(profile.provider, profile, environ)}"
+    return f"{head}\n{saved}\n{rest}"

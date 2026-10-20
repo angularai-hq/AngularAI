@@ -110,9 +110,12 @@ upper_hex = hexes.map(str.upper)
 uuids = st.uuids().map(str)
 numbers = st.integers(0, 10**12).map(str)
 segment = st.one_of(word, hexes, uuids, numbers, st.sampled_from(["src", "v1", "T", "_", "."]))
+# A path starts like one ("/", "./", "../", "~/"), as the redactor documents. A bare
+# "a/b/T" is a run like any other: with the case mix, digits, and entropy of a key,
+# it is judged as one, so base64 with a "/" is still caught.
 paths = st.builds(
     lambda head, parts, tail: head + "/".join(parts) + tail,
-    st.sampled_from(["/", "./", "../", "~/", ""]),
+    st.sampled_from(["/", "./", "../", "~/"]),
     st.lists(segment, min_size=1, max_size=8),
     st.sampled_from(["", "/", ".py", ".txt"]),
 )
