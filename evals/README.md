@@ -98,6 +98,20 @@ Speed on this box (8 vCPU Xeon, AVX-512/AMX, no GPU, about 5 GB free RAM, other 
 
 The full 457 eligible questions, three arms and the judge: about 330 s a question, about 42 hours. `full` is 85% of it. The 50-question `full` arm took 5 h 8 min of model time. `qwen2.5:7b` does not fit a 16k window in the free RAM.
 
+## Results: cortex v2, first run
+
+Tue 20 Oct 2026. `v2` arm: `aa-qwen2.5-3b`, budget 2,000, local `nomic-embed-text` v1.5 (Q8_0 GGUF, Hugging Face) for vectors, no neighbor chunks. Same 50 questions.
+
+| arm | judge % | contains % | est. tokens | p50 s |
+| --- | --- | --- | --- | --- |
+| `v1` | 54.0 | 31.0 | 1,904 | 21.8 |
+| `v2` | 44.0 | 26.2 | 1,981 | 26.4 |
+| `full` | 54.0 | 40.5 | 11,937 | 307.7 |
+
+- v2 is below v1: -10 judge, -4.8 contains. Most of the loss is temporal-reasoning (46.2 → 15.4) and multi-session (36.4 → 27.3). Sentence chunks lose the surrounding turn that v1's episode lines keep. One question errored.
+- Retrieval itself is not the gap: on a dev subset disjoint from b50, the gold answer is in v2's workspace as often as or more often than in v1's.
+- The strict gap to `full` is not closed. v2 stays off by default (`ANGULARAI_INDEX=off`).
+
 ## Kill rule
 
 No "beats frontier" claim unless benchmark A shows at least +10 points over the small model alone.

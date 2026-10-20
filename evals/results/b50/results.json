@@ -116,6 +116,54 @@
       "errors": 0.0
     },
     {
+      "file": "v2-3b-2000.judged.jsonl",
+      "arm": "v2",
+      "model": "aa-qwen2.5-3b",
+      "budget": 2000,
+      "judge_model": "aa-qwen3-4b",
+      "complete": true,
+      "n": 50,
+      "judge": 44.0,
+      "contains": 26.2,
+      "abstention": 80.0,
+      "per_type": {
+        "knowledge-update": {
+          "n": 9,
+          "judge": 55.6,
+          "contains": 28.6
+        },
+        "multi-session": {
+          "n": 11,
+          "judge": 27.3,
+          "contains": 11.1
+        },
+        "single-session-assistant": {
+          "n": 6,
+          "judge": 50.0,
+          "contains": 16.7
+        },
+        "single-session-preference": {
+          "n": 3,
+          "judge": 100.0,
+          "contains": null
+        },
+        "single-session-user": {
+          "n": 8,
+          "judge": 75.0,
+          "contains": 57.1
+        },
+        "temporal-reasoning": {
+          "n": 13,
+          "judge": 15.4,
+          "contains": 23.1
+        }
+      },
+      "prompt_tokens_mean": null,
+      "prompt_tokens_est_mean": 1980.7,
+      "seconds_p50": 26.4,
+      "errors": 1.0
+    },
+    {
       "file": "full-3b.judged.jsonl",
       "arm": "full",
       "model": "aa-qwen2.5-3b",
