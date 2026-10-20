@@ -319,6 +319,15 @@ CI runs the same five on Linux and macOS, Python 3.12 and 3.13, for every pull r
 
 The invariant is `tests/test_membrane.py`, and for the agent `tests/test_agent.py`. A fact from the start of a long life is in the workspace, an unrelated episode that would have fit is not, and every call stays inside the budget. The agent reads the file it asked for. The file it did not ask for is not sent.
 
+## Evals
+
+Benchmark A is LongMemEval-S, cut to fit a local model on a CPU. Free models only: `angularai-eval` removes paid keys from its environment and refuses a base URL off this machine. The v1 baseline, the reduction, the seed and the models are in [`evals/`](evals/README.md).
+
+```bash
+uv run angularai-eval fetch
+evals/baseline.sh 50
+```
+
 ## Site
 
 The site is a Next.js static export in [`site/`](site). GitHub Pages serves it from `main:/docs`. The Python package does not include `site/`.

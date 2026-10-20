@@ -1,0 +1,5 @@
+FROM qwen3:4b-instruct-2507
+PARAMETER num_ctx 16384
+PARAMETER num_thread 6
+PARAMETER temperature 0
+PARAMETER seed 0

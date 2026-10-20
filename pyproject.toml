@@ -28,6 +28,7 @@ dev = [
 
 [project.scripts]
 angularai = "angularai.cli:main"
+angularai-eval = "angularai.evals.cli:main"
 
 [dependency-groups]
 dev = [
@@ -68,6 +69,7 @@ explicit_package_bases = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["live: needs a local model server; runs only with ANGULARAI_EVAL_LIVE=1"]
 
 [tool.coverage.run]
 branch = true
