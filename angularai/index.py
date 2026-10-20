@@ -128,7 +128,6 @@ def index_from_env(
             query_prefix=query,
             secrets=secrets,
             warn=warn,
-            context=1,
         )
     except IndexUnavailable as exc:
         if warn is not None:

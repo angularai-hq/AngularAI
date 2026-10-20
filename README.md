@@ -276,7 +276,7 @@ Vectors are lines in `embeddings.jsonl` in the cortex, keyed by trace, model, an
 <details>
 <summary>What is cortex v2 recall?</summary>
 
-`ANGULARAI_INDEX=on` turns it on for `say`. Off by default. `index.sqlite3` sits beside the log: every current trace, and every episode cut into chunks of whole sentences up to 400 characters, yours and the reply's apart, each with its date. FTS5 ranks chunks by BM25. With `ANGULARAI_EMBEDDINGS`, chunk vectors rank by cosine, and the two ranks are fused. Each hit brings the chunk before and after it in the same turn. What fits the budget is sent, in the order it was said, under the same blocks and the same budget.
+`ANGULARAI_INDEX=on` turns it on for `say`. Off by default. `index.sqlite3` sits beside the log: every current trace, and every episode cut into chunks of whole sentences up to 400 characters, yours and the reply's apart, each with its date. FTS5 ranks chunks by BM25. With `ANGULARAI_EMBEDDINGS`, chunk vectors rank by cosine, and the two ranks are fused. What fits the budget is sent, in the order it was said, under the same blocks and the same budget.
 
 The log stays the truth. The index is a view: delete it and the next pass rebuilds it. A v1 cortex migrates on its first v2 pass: every pass already in the log is indexed. A log rewritten by `repair` or `forget` is indexed again from the start. A superseded or forgotten trace is never sent. No FTS5 in this Python's SQLite, or a broken index: the pass uses v1 recall.
 
