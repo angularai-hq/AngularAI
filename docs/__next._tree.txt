@@ -1,0 +1,7 @@
+:HL["/AngularAI/_next/static/chunks/3pzjngwsehw4v.css","style"]
+:HL["/AngularAI/_next/static/media/83afe278b6a6bb3c-s.p.2bn3s6zvc0dyp.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/AngularAI/_next/static/media/aaeb013c77132fba-s.p.1wh0qzzwls4_i.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/AngularAI/art/mcp-420.webp","image",{"imageSrcSet":"/AngularAI/art/mcp-420.webp 420w, /AngularAI/art/mcp-800.webp 800w","imageSizes":"(min-width: 1024px) 22vw, (min-width: 640px) 45vw, 78vw","fetchPriority":"high"}]
+:HL["/AngularAI/art/cortexes-420.webp","image",{"imageSrcSet":"/AngularAI/art/cortexes-420.webp 420w, /AngularAI/art/cortexes-800.webp 800w","imageSizes":"(min-width: 1024px) 22vw, (min-width: 640px) 45vw, 78vw"}]
+1:[["children",{"s":"__PAGE__","h":128}]]
+0:{"b":"LXg8vL3KIaElZ4-oYGdDE","t":{"t":{"s":"","h":16,"c":"$Q1"}}}

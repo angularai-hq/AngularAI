@@ -1,0 +1,30 @@
+{
+  "name": "angularai-site",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "export:docs": "next build && node scripts/export-docs.mjs",
+    "serve": "node scripts/serve.mjs",
+    "lint": "tsc --noEmit"
+  },
+  "packageManager": "pnpm@10.34.6",
+  "dependencies": {
+    "marked": "^18.1.1",
+    "next": "16.4.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "postcss": "^8.5.31",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3"
+  }
+}
