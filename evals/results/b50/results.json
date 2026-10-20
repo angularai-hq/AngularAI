@@ -1,0 +1,119 @@
+{
+  "benchmark": "LongMemEval-S (reduced)",
+  "subset": {
+    "format": 1,
+    "revision": "98d7416c24c778c2fee6e6f3006e7a073259d48f",
+    "sha256": "d6f21ea9d60a0d56f34a05b609c79c88a451d2ae03597821ea3d5a9678c3a442",
+    "seed": 0,
+    "count": 50,
+    "haystack_tokens": 12000,
+    "eligible": 457,
+    "total": 500,
+    "per_type": {
+      "knowledge-update": 9,
+      "multi-session": 11,
+      "single-session-assistant": 6,
+      "single-session-preference": 3,
+      "single-session-user": 8,
+      "temporal-reasoning": 13
+    }
+  },
+  "arms": [
+    {
+      "file": "truncated-3b-2000.judged.jsonl",
+      "arm": "truncated",
+      "model": "aa-qwen2.5-3b",
+      "budget": 2000,
+      "judge_model": "aa-qwen3-4b",
+      "complete": true,
+      "n": 50,
+      "judge": 22.0,
+      "contains": 7.1,
+      "abstention": 100.0,
+      "per_type": {
+        "knowledge-update": {
+          "n": 9,
+          "judge": 22.2,
+          "contains": 0.0
+        },
+        "multi-session": {
+          "n": 11,
+          "judge": 18.2,
+          "contains": 0.0
+        },
+        "single-session-assistant": {
+          "n": 6,
+          "judge": 33.3,
+          "contains": 16.7
+        },
+        "single-session-preference": {
+          "n": 3,
+          "judge": 66.7,
+          "contains": null
+        },
+        "single-session-user": {
+          "n": 8,
+          "judge": 25.0,
+          "contains": 0.0
+        },
+        "temporal-reasoning": {
+          "n": 13,
+          "judge": 7.7,
+          "contains": 15.4
+        }
+      },
+      "prompt_tokens_mean": 1479.4,
+      "prompt_tokens_est_mean": 1717.8,
+      "seconds_p50": 13.1,
+      "errors": 0.0
+    },
+    {
+      "file": "v1-3b-2000.judged.jsonl",
+      "arm": "v1",
+      "model": "aa-qwen2.5-3b",
+      "budget": 2000,
+      "judge_model": "aa-qwen3-4b",
+      "complete": true,
+      "n": 50,
+      "judge": 54.0,
+      "contains": 31.0,
+      "abstention": 80.0,
+      "per_type": {
+        "knowledge-update": {
+          "n": 9,
+          "judge": 55.6,
+          "contains": 28.6
+        },
+        "multi-session": {
+          "n": 11,
+          "judge": 36.4,
+          "contains": 11.1
+        },
+        "single-session-assistant": {
+          "n": 6,
+          "judge": 50.0,
+          "contains": 16.7
+        },
+        "single-session-preference": {
+          "n": 3,
+          "judge": 100.0,
+          "contains": null
+        },
+        "single-session-user": {
+          "n": 8,
+          "judge": 75.0,
+          "contains": 71.4
+        },
+        "temporal-reasoning": {
+          "n": 13,
+          "judge": 46.2,
+          "contains": 30.8
+        }
+      },
+      "prompt_tokens_mean": null,
+      "prompt_tokens_est_mean": 1904.1,
+      "seconds_p50": 21.8,
+      "errors": 0.0
+    }
+  ]
+}

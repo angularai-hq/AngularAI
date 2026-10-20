@@ -61,6 +61,32 @@ Or every arm: `evals/baseline.sh 50`. Every step resumes: a rerun skips what is 
 
 `uv run pytest` runs no model. `ANGULARAI_EVAL_LIVE=1 uv run pytest -m live` runs one live check against the local server.
 
+## Results: v1 baseline, 50 questions
+
+Tue 20 Oct 2026. `results/b50/`. Same subset, same model, same 2,000-token budget.
+
+| arm | model | n | judge % | contains % | prompt tokens | p50 s |
+| --- | --- | --- | --- | --- | --- | --- |
+| `truncated` | `aa-qwen2.5-3b` | 50 | 22.0 | 7.1 | 1,479 | 13.1 |
+| `v1` | `aa-qwen2.5-3b` | 50 | 54.0 | 31.0 | ≤ 2,000 (est. 1,904) | 21.8 |
+| `full` | `aa-qwen2.5-3b` | 50 | running | | about 10,100 | about 283 |
+
+By type, judge %, `truncated` → `v1`: knowledge-update 22.2 → 55.6 (9), multi-session 18.2 → 36.4 (11), single-session-assistant 33.3 → 50.0 (6), single-session-preference 66.7 → 100 (3), single-session-user 25.0 → 75.0 (8), temporal-reasoning 7.7 → 46.2 (13). Abstention 100 → 80 (5).
+
+- v1 is +32 points over the small model alone at the same budget. The kill rule's bar is +10. This is v1 against truncation, not against a frontier model.
+- The judge is a 4B local model. Spot checks find it lenient on some numeric answers. `contains` moves the same way: 7.1 → 31.0.
+- 50 questions: one question is 2 points. Read differences under 10 points as noise.
+- Prompt tokens for `truncated` and `full` are the server's count; for `v1`, the membrane's estimate (4 characters = 1 token), which runs about 15% above the server's.
+
+Speed on this box (8 vCPU Xeon, AVX-512/AMX, no GPU, about 5 GB free RAM, other work running), from the server's timings:
+
+| model | prompt tok/s | at ≥ 8k context | generation tok/s |
+| --- | --- | --- | --- |
+| `aa-qwen2.5-3b` | 97 | 36 | 14.7 |
+| `aa-qwen3-4b` (judge) | 125 (short prompts) | not measured | 10 (1–2 token replies) |
+
+The full 457 eligible questions, three arms and the judge: about 330 s a question, about 42 hours. `full` is 85% of it. The 50-question `full` arm is about 4 hours. `qwen2.5:7b` does not fit a 16k window in the free RAM.
+
 ## Kill rule
 
 No "beats frontier" claim unless benchmark A shows at least +10 points over the small model alone.

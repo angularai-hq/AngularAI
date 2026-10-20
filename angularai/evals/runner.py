@@ -228,15 +228,15 @@ def report(
 def markdown(result: Mapping[str, object]) -> str:
     rows = result.get("arms")
     lines = [
-        "| arm | model | budget | n | judge % | contains % | prompt tokens (mean) | p50 s |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| arm | model | budget | n | judge % | contains % | est. tokens | server tokens | p50 s |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for arm in rows if isinstance(rows, list) else []:
-        tokens = arm.get("prompt_tokens_mean") or arm.get("prompt_tokens_est_mean")
         lines.append(
             f"| {arm.get('arm')} | {arm.get('model')} | {arm.get('budget') or '-'} "
             f"| {arm.get('n')} | {_cell(arm.get('judge'))} | {_cell(arm.get('contains'))} "
-            f"| {_cell(tokens)} | {_cell(arm.get('seconds_p50'))} |"
+            f"| {_cell(arm.get('prompt_tokens_est_mean'))} "
+            f"| {_cell(arm.get('prompt_tokens_mean'))} | {_cell(arm.get('seconds_p50'))} |"
         )
     return "\n".join(lines) + "\n"
 
