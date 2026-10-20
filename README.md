@@ -75,7 +75,7 @@ The cortex is `~/.angularai/default`, readable only by you. The key is not a fie
 angularai setup
 ```
 
-Pick a provider, a model, and a key. The key is hidden as you type and never shown again, only its tail: `sk-…a1b2`. One tiny call tests it, then it is saved and made active. `angularai` in a terminal with nothing set up offers this first.
+Screens, in the session's look: provider, base URL (compatible only), key, model, test. The key shows as bullets as you type, paste works, and after that only its tail: `sk-…a1b2`. The model list comes from the server for Ollama and compatible endpoints, else type one. One tiny call tests it: ok, or the error named, then save, edit, retry, or save anyway. `angularai` in a terminal with nothing set up opens these first, then the session.
 
 Or keep the key in the environment and wire the cortex:
 
@@ -105,10 +105,13 @@ angularai model remove openai
 | command | |
 | --- | --- |
 | `setup` | Save a model and its key, test it, make it active. |
-| `model`, `model list` | The saved models. `*` is active. A key shows as its last four characters. `--json` for scripts. |
+| `model` | On a terminal, the model screen: switch, add, remove. `/model` in the session opens it too. |
+| `model list` | The saved models. `*` is active. A key shows as its last four characters. `--json` for scripts. |
 | `model add` | Save another. It becomes active with `--use`. |
 | `model use NAME` | Make one active. |
 | `model remove NAME` | Remove one and its key. |
+
+Keys: `↑↓` or `j k` move, `enter` picks, `esc` goes back, `q` or `ctrl+c` leaves. On the model screen `enter` uses, `a` adds, `d` removes after `y`.
 
 Providers: `openai`, `anthropic`, `ollama` (a compatible server on `http://127.0.0.1:11434/v1`, no key), `compatible` (any OpenAI-compatible `--base-url`). The test is one prompt of one word, a few tokens back, within 60 seconds. A rejected key, a quota, a missing model, or nothing listening is named, and nothing is saved. On a terminal you may save anyway. `--skip-test` skips it.
 
@@ -119,7 +122,7 @@ printf '%s\n' "$KEY" | angularai setup --provider openai --model <model> --key-s
 angularai setup --provider ollama --model llama3.2
 ```
 
-`setup` without a terminal and without `--provider` and `--model` fails and says so. In CI (`CI` set) nothing is offered.
+`setup` without a terminal and without `--provider` and `--model` fails and says so. Flags, `TERM=dumb`, or no terminal keep the line prompts. In CI (`CI` set) nothing is offered. `NO_COLOR` draws the screens in monochrome.
 
 ### Where it is kept
 

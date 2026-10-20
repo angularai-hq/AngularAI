@@ -11,6 +11,7 @@ from textual.widgets import Input, Static
 
 from angularai import __version__
 from angularai.errors import AngularAIError
+from angularai.profiles import effective_config
 from angularai.session import COMMANDS, cortex_status, session_command
 from angularai.store import Store
 
@@ -20,6 +21,9 @@ _EMPTY = "The cortex is empty.\nSay something. What fits is sent. What it keeps 
 _FAILED = "The pass failed. Nothing new was written."
 _FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 _REVEAL_AT = 48
+_SESSION_ACTIONS = frozenset(
+    {"history_previous", "history_next", "complete", "clear_screen", "quit"}
+)
 
 _CSS = """
 Screen {
@@ -265,7 +269,28 @@ class AngularApp(App[None]):
             field.value = self._history[self._history_at]
         field.cursor_position = len(field.value)
 
+    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        """While the model screen is open, the session's keys belong to it."""
+
+        if len(self.screen_stack) > 1 and action in _SESSION_ACTIONS:
+            return False
+        return True
+
+    def _open_models(self) -> None:
+        from angularai.profiles import Vault
+        from angularai.setup_tui import ManageScreen, color_on
+
+        def closed(_result: object) -> None:
+            self._paint()
+            self.query_one("#input", Input).focus()
+
+        screen = ManageScreen(os.environ, Vault(os.environ), color=color_on(os.environ))
+        self.push_screen(screen, closed)
+
     def _take(self, text: str) -> None:
+        if text == "/model":
+            self._open_models()
+            return
         action, payload = session_command(self._store, text, cortex_status(self._store, os.environ))
         if action == "quit":
             self.exit()
@@ -490,6 +515,10 @@ def run_tui(store: Store, speak: Speaker) -> int:
 
 def status_line(store: Store, width: int, busy: bool, frame: str = "") -> str:
     config = store.config()
+    try:
+        config = effective_config(config, os.environ)[0]
+    except AngularAIError:
+        pass
     last = store.last_pass()
     traces = len(store.view().current_traces())
     kind = config.substrate or "unwired"

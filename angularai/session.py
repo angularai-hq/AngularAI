@@ -16,6 +16,7 @@ COMMANDS = (
     ("/status", "budget and the last pass"),
     ("/locks", "phrases a reply cannot contain"),
     ("/budget", "the workspace limit"),
+    ("/model", "saved models and keys"),
     ("/help", "these commands"),
     ("/quit", "leave"),
 )
@@ -45,6 +46,8 @@ def session_command(store: Store, line: str, status_text: str) -> tuple[SessionA
     if stripped == "/budget":
         budget = store.config().workspace_budget
         return "continue", f"{budget} estimated tokens"
+    if stripped == "/model":
+        return "continue", _models()
     if stripped.startswith("/recall"):
         query = stripped.removeprefix("/recall").strip()
         if not query:
@@ -76,3 +79,20 @@ def cortex_status(store: Store, environ: Mapping[str, str]) -> str:
     head, _, rest = text.partition("\n")
     saved = f"saved model {profile.name}\nkey  {key_source(profile.provider, profile, environ)}"
     return f"{head}\n{saved}\n{rest}"
+
+
+def _models() -> str:
+    """The saved models, for the line session. The full session opens the model screen."""
+
+    import os
+
+    from angularai.onboard import format_book
+    from angularai.profiles import load_book
+
+    try:
+        book = load_book(os.environ)
+    except AngularAIError as exc:
+        return str(exc)
+    if not book.profiles:
+        return "No saved models. Run: angularai setup"
+    return format_book(book, os.environ)
