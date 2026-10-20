@@ -264,11 +264,23 @@ Nothing, unless `ANGULARAI_EMBEDDINGS` is set. Then `say`, the session's turns, 
 
 | variable | default | |
 | --- | --- | --- |
-| `ANGULARAI_EMBEDDINGS` | `off` | `openai`: `OPENAI_API_KEY`, `text-embedding-3-small` at 512 dimensions. `compatible`: the cortex's `--base-url` and `ANGULARAI_API_KEY`. |
-| `ANGULARAI_EMBEDDINGS_MODEL` | `text-embedding-3-small` | |
+| `ANGULARAI_EMBEDDINGS` | `off` | `openai`: `OPENAI_API_KEY`, `text-embedding-3-small` at 512 dimensions. `compatible`: the cortex's `--base-url` and `ANGULARAI_API_KEY`. `local`: `ANGULARAI_EMBEDDINGS_URL`, no key, `nomic-embed-text`. |
+| `ANGULARAI_EMBEDDINGS_MODEL` | `text-embedding-3-small` | `nomic-embed-text` for `local` |
+| `ANGULARAI_EMBEDDINGS_URL` | `http://127.0.0.1:11434/v1` | `local` only. Ollama by default. |
 | `ANGULARAI_EMBEDDINGS_MIN` | 0.35 | 0–1 |
 
 Vectors are lines in `embeddings.jsonl` in the cortex, keyed by trace, model, and a digest of the redacted text. It is a cache: delete it and it is rebuilt. A request waits at most 20 seconds and is tried twice. No key, no network, or an answer without vectors: you are told once on stderr, and recall stays lexical. The pass goes on.
+
+</details>
+
+<details>
+<summary>What is cortex v2 recall?</summary>
+
+`ANGULARAI_INDEX=on` turns it on for `say`. Off by default. `index.sqlite3` sits beside the log: every current trace, and every episode cut into chunks of whole sentences up to 400 characters, yours and the reply's apart, each with its date. FTS5 ranks chunks by BM25. With `ANGULARAI_EMBEDDINGS`, chunk vectors rank by cosine, and the two ranks are fused. Each hit brings the chunk before and after it in the same turn. What fits the budget is sent, in the order it was said, under the same blocks and the same budget.
+
+The log stays the truth. The index is a view: delete it and the next pass rebuilds it. A v1 cortex migrates on its first v2 pass: every pass already in the log is indexed. A log rewritten by `repair` or `forget` is indexed again from the start. A superseded or forgotten trace is never sent. No FTS5 in this Python's SQLite, or a broken index: the pass uses v1 recall.
+
+With `ANGULARAI_EMBEDDINGS=local`, nothing leaves the machine: every chunk is embedded by a local model, once.
 
 </details>
 

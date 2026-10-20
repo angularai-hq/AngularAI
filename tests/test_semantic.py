@@ -253,8 +253,8 @@ def test_the_environment_picks_the_embedder() -> None:
     config = default_config()
     assert embedder_from_env(config, {}) is None
     assert embedder_from_env(config, {"ANGULARAI_EMBEDDINGS": " OFF "}) is None
-    with pytest.raises(ConfigError, match="off, openai, or compatible"):
-        embedder_from_env(config, {"ANGULARAI_EMBEDDINGS": "local"})
+    with pytest.raises(ConfigError, match="off, openai, compatible, or local"):
+        embedder_from_env(config, {"ANGULARAI_EMBEDDINGS": "cloud"})
     with pytest.raises(KeyMissing, match="OPENAI_API_KEY"):
         embedder_from_env(config, {"ANGULARAI_EMBEDDINGS": "openai"})
     chosen = embedder_from_env(config, {"ANGULARAI_EMBEDDINGS": "openai", "OPENAI_API_KEY": "k"})

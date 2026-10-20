@@ -9,6 +9,7 @@ from angularai import __version__
 from angularai.agent import run_agent
 from angularai.configure import add_lock, remove_lock, set_budget, wire
 from angularai.errors import AngularAIError, InputRejected, KeyMissing, NoCortex
+from angularai.index import CortexIndex, index_from_env
 from angularai.models import SubstrateKind
 from angularai.names import cortex_home, label, list_names, named_root, resolve_root
 from angularai.onboard import add_commands, model_command, offer_setup, setup_command
@@ -339,8 +340,30 @@ def _speak(store: Store, text: str) -> str:
     secrets = secret_values(os.environ)
     screen(text, secrets)
     substrate = build_substrate(store.config(), os.environ)
-    result = pass_turn(store, substrate, text, secrets, recall=_semantic(store))
+    index = _index(store, secrets)
+    try:
+        recall = None if index is not None else _semantic(store)
+        result = pass_turn(store, substrate, text, secrets, recall=recall, index=index)
+    finally:
+        if index is not None:
+            index.close()
     return result.reply
+
+
+def _index(store: Store, secrets: tuple[str, ...]) -> CortexIndex | None:
+    """Cortex v2 recall, when ANGULARAI_INDEX is on. Embeddings as ANGULARAI_EMBEDDINGS."""
+
+    def warn(notice: str) -> None:
+        print(notice, file=sys.stderr)
+
+    if os.environ.get("ANGULARAI_INDEX", "").strip().lower() in ("", "off"):
+        return None
+    try:
+        embedder = embedder_from_env(store.config(), os.environ)
+    except KeyMissing as exc:
+        warn(f"Embeddings are unavailable: {exc} Recall is lexical.")
+        embedder = None
+    return index_from_env(store.root, os.environ, embedder, secrets, warn)
 
 
 def _status(store: Store) -> str:

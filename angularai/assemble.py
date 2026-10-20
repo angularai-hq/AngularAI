@@ -50,7 +50,7 @@ def assemble(
             f"The input cap is {config.max_input_tokens} estimated tokens."
         )
 
-    head = _lock_block(config.forbid) + "\n\nTRACES\n"
+    head = lock_block(config.forbid) + "\n\nTRACES\n"
     recent = "\nRECENT\n"
     tail = f"\nINPUT\n{text}"
 
@@ -151,7 +151,7 @@ def _lines(items: list[_Candidate]) -> list[str]:
     return [item.line for item in items]
 
 
-def _lock_block(forbid: tuple[str, ...]) -> str:
+def lock_block(forbid: tuple[str, ...]) -> str:
     if not forbid:
         return "VALUE LOCK\nnone"
     lines = "\n".join(f"- {phrase}" for phrase in forbid)
@@ -164,14 +164,14 @@ def _trace_line(trace: Trace) -> str:
 
 
 def _episode_line(episode: Episode, query: str) -> str:
-    asker, answerer = _speakers(episode)
+    asker, answerer = speakers(episode)
     you = f"{asker}  {focus(episode.user, query, 700)}\n"
     if episode.reply is None:
         return you
     return you + f"{answerer}  {focus(episode.reply, query, 400)}\n"
 
 
-def _speakers(episode: Episode) -> tuple[str, str]:
+def speakers(episode: Episode) -> tuple[str, str]:
     """Who said each half. A peer is named, so its words are never taken for yours."""
 
     peer = episode.peer

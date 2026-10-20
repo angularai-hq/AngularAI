@@ -16,6 +16,7 @@ from angularai.evals.dataset import DatasetError, fetch, load
 from angularai.evals.reduce import read_subset, reduce, write_subset
 from angularai.evals.runner import ARMS, Arm, judge, markdown, report, run
 from angularai.provider import Policy
+from angularai.semantic import EmbeddingsAPI
 from angularai.substrate import substrate_for
 
 LOCAL = "http://127.0.0.1:11434/v1"
@@ -26,6 +27,20 @@ def scrub(environ: MutableMapping[str, str]) -> None:
 
     for name in PAID_KEYS:
         environ.pop(name, None)
+
+
+def local_embedder(model: str, base_url: str) -> EmbeddingsAPI:
+    """An embedding model on the local server. No key is sent."""
+
+    policy = Policy(connect_timeout=10.0, read_timeout=300.0, deadline=600.0, attempts=2)
+    return EmbeddingsAPI(
+        model=model,
+        base_url=base_url,
+        api_key="",
+        dimensions=None,
+        provider="local embeddings",
+        policy=policy,
+    )
 
 
 def default_data() -> Path:
@@ -55,6 +70,8 @@ def parser() -> argparse.ArgumentParser:
     go.add_argument("--limit", type=int, default=None)
     go.add_argument("--out", type=Path, required=True)
     go.add_argument("--allow-remote", action="store_true")
+    go.add_argument("--embed-model", default=None, help="v2: a local embedding model.")
+    go.add_argument("--context", type=int, default=0, help="v2: neighbor chunks per hit.")
 
     grade = sub.add_parser("judge", help="Grade predictions with the official prompts.")
     grade.add_argument("--subset", type=Path, required=True)
@@ -106,11 +123,22 @@ def _dispatch(args: argparse.Namespace) -> int:
         chat = Chat(model=args.model, base_url=base, allow_remote=args.allow_remote)
         arm = cast(Arm, args.arm)
         substrate = None
-        if arm == "v1":
+        embedder = None
+        if arm in ("v1", "v2"):
             policy = Policy(connect_timeout=10.0, read_timeout=1800.0, deadline=1800.0, attempts=1)
             substrate = substrate_for("compatible", args.model, base, "", policy, json_mode=True)
+        if arm == "v2" and args.embed_model:
+            embedder = local_embedder(args.embed_model, base)
         made = run(
-            arm, questions, args.out, chat, budget=args.budget, substrate=substrate, progress=_say
+            arm,
+            questions,
+            args.out,
+            chat,
+            budget=args.budget,
+            substrate=substrate,
+            embedder=embedder,
+            context=args.context,
+            progress=_say,
         )
         _say(f"{made} answered")
         return 0

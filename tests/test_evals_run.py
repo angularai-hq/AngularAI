@@ -206,6 +206,32 @@ def test_answer_arms(tmp_path: Path) -> None:
     assert "substrate" in str(missing["error"])
 
 
+def test_v2_arm_indexes_the_history_with_vectors(tmp_path: Path) -> None:
+    from tests.test_semantic import Fake
+
+    fake = Fake(model="nomic-test")
+    record = answer(
+        "v2",
+        question(),
+        chat(FakePost()),
+        budget=1000,
+        substrate=Scripted(said("blue")),
+        embedder=fake,
+        context=1,
+    )
+    assert record["error"] is None and record["prediction"] == "blue"
+    assert record["chunks"] == 8 and record["embed_model"] == "nomic-test"
+    assert record["context"] == 1 and record["budget"] == 1000
+    assert fake.sent[0][0].startswith("search_document: ")
+    lexical = answer("v2", question(), chat(FakePost()), budget=1000, substrate=Scripted(said("b")))
+    assert lexical["embed_model"] is None and lexical["chunks"] == 8
+
+
+def test_cli_v2_builds_a_local_embedder() -> None:
+    embedder = cli.local_embedder("aa-nomic-embed", LOCAL)
+    assert embedder.model == "aa-nomic-embed"
+
+
 def test_answer_keeps_an_error_and_moves_on() -> None:
     class Down:
         def integrate(self, workspace: Workspace) -> object:
@@ -326,6 +352,11 @@ def test_cli_v1_arm_builds_a_keyless_local_substrate(
     assert cli.main(argv) == 0
     assert built == [("compatible", "m", LOCAL, "", {"json_mode": True})]
     assert done(preds)["q1"]["prediction"] == "blue"
+    v2 = tmp_path / "v2.jsonl"
+    argv = ["run", "--subset", str(subset), "--arm", "v2", "--model", "m", "--out", str(v2)]
+    monkeypatch.setattr("angularai.evals.cli.local_embedder", lambda model, base: None)
+    assert cli.main([*argv, "--embed-model", "e", "--context", "1"]) == 0
+    assert done(v2)["q1"]["context"] == 1
 
 
 def test_cli_reports_errors_in_one_line(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
