@@ -29,8 +29,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from angularai.assemble import SYSTEM, lock_block, speakers
-from angularai.attention import tokens
+from angularai.assemble import SYSTEM, focus, lock_block, speakers
+from angularai.attention import score, tokens
 from angularai.budget import estimate_tokens
 from angularai.errors import AngularAIError, ConfigError, InputDoesNotFit
 from angularai.models import Config, CortexView, Episode, PassRecord, Trace, Workspace
@@ -46,7 +46,12 @@ POOL = 60
 _BATCH = 64
 _SENTENCE = re.compile(r"(?<=[.!?])\s+|\n+")
 
-Kind = Literal["trace", "user", "reply"]
+Kind = Literal["trace", "user", "reply", "episode"]
+Unit = Literal["sentence", "turn", "episode"]
+UNITS: tuple[Unit, ...] = ("sentence", "turn", "episode")
+SEP = "\x1f"
+USER_CHARS = 700
+REPLY_CHARS = 400
 Warn = Callable[[str], None]
 
 
@@ -171,10 +176,14 @@ class CortexIndex:
         warn: Warn | None = None,
         chunk_chars: int = CHUNK_CHARS,
         context: int = 0,
+        unit: Unit = "sentence",
+        word_rank: bool = False,
     ) -> None:
         self.root = root
         self._chunk_chars = chunk_chars
         self._context = context
+        self._unit = unit
+        self._word_rank = word_rank
         self.path = root / INDEX
         self._embedder = embedder
         self._document_prefix = document_prefix
@@ -202,7 +211,7 @@ class CortexIndex:
         db = self._db
         db.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
         found = self._meta("format")
-        shape = f"{self.model}|{self._chunk_chars}|{self._document_prefix}"
+        shape = f"{self.model}|{self._unit}|{self._chunk_chars}|{self._document_prefix}"
         if found not in (None, FORMAT) or self._meta("shape") not in (None, shape):
             db.execute("DROP TABLE IF EXISTS fts")
             db.execute("DROP TABLE IF EXISTS chunks")
@@ -273,10 +282,20 @@ class CortexIndex:
         if record.outcome != "error":
             episode = Episode(record.at, record.user, record.reply, record.outcome, record.peer)
             asker, answerer = speakers(episode)
-            for text in chunks_of(record.user, self._chunk_chars):
-                rows.append((position, record.at, "user", None, text, asker))
-            for text in chunks_of(record.reply or "", self._chunk_chars):
-                rows.append((position, record.at, "reply", None, text, answerer))
+            user = " ".join(record.user.split())
+            reply = " ".join((record.reply or "").split())
+            if self._unit == "episode":
+                text = user + (SEP + reply if reply else "")
+                rows.append((position, record.at, "episode", None, text, asker + SEP + answerer))
+            elif self._unit == "turn":
+                rows.append((position, record.at, "user", None, user, asker))
+                if reply:
+                    rows.append((position, record.at, "reply", None, reply, answerer))
+            else:
+                for piece in chunks_of(record.user, self._chunk_chars):
+                    rows.append((position, record.at, "user", None, piece, asker))
+                for piece in chunks_of(record.reply or "", self._chunk_chars):
+                    rows.append((position, record.at, "reply", None, piece, answerer))
         for row in rows:
             cursor = self._db.execute(
                 "INSERT INTO chunks (position, at, kind, trace_id, text, speaker) "
@@ -297,7 +316,10 @@ class CortexIndex:
             ).fetchall()
             if not rows:
                 return
-            texts = [self._document_prefix + redact(str(text), self._secrets) for _, text in rows]
+            texts = [
+                self._document_prefix + redact(str(text).replace(SEP, "\n"), self._secrets)
+                for _, text in rows
+            ]
             try:
                 vectors = self._embedder.embed(texts)
             except AngularAIError as exc:
@@ -332,6 +354,9 @@ class CortexIndex:
             ranks[chunk_id] = ranks.get(chunk_id, 0.0) + 1.0 / (RRF_K + order + 1)
         for order, chunk_id in enumerate(self._vector(query, limit * 2)):
             ranks[chunk_id] = ranks.get(chunk_id, 0.0) + 1.0 / (RRF_K + order + 1)
+        if self._word_rank:
+            for order, chunk_id in enumerate(self._words(query, limit * 2)):
+                ranks[chunk_id] = ranks.get(chunk_id, 0.0) + 1.0 / (RRF_K + order + 1)
         hits: list[Hit] = []
         for chunk_id, rank in sorted(ranks.items(), key=lambda item: (-item[1], item[0])):
             chunk = self._chunk(chunk_id)
@@ -377,6 +402,17 @@ class CortexIndex:
         ).fetchall()
         return [int(row[0]) for row in rows]
 
+    def _words(self, query: str, limit: int) -> list[int]:
+        """v1's attention: the share of the query's words found in the unit."""
+
+        scored: list[tuple[float, int]] = []
+        for chunk_id, text in self._db.execute("SELECT id, text FROM chunks"):
+            rank = score(query, str(text).replace(SEP, "\n"))
+            if rank > 0:
+                scored.append((rank, int(chunk_id)))
+        scored.sort(key=lambda item: (-item[0], item[1]))
+        return [chunk_id for _, chunk_id in scored[:limit]]
+
     def _vector(self, query: str, limit: int) -> list[int]:
         if self._embedder is None:
             return []
@@ -404,7 +440,16 @@ class CortexIndex:
         ).fetchone()
         if row is None:
             return None
-        kind: Kind = "trace" if row[3] == "trace" else "user" if row[3] == "user" else "reply"
+        found = str(row[3])
+        kind: Kind = (
+            "trace"
+            if found == "trace"
+            else "user"
+            if found == "user"
+            else "episode"
+            if found == "episode"
+            else "reply"
+        )
         return Chunk(int(row[0]), int(row[1]), str(row[2]), kind, row[4], str(row[5]), str(row[6]))
 
     def newest(self) -> Chunk | None:
@@ -419,12 +464,23 @@ class CortexIndex:
             raise IndexUnavailable(f"The cortex index failed: {exc}.") from exc
 
 
-def _chunk_line(chunk: Chunk, traces: dict[str, Trace]) -> str:
+def _chunk_line(chunk: Chunk, traces: dict[str, Trace], query: str = "") -> str:
+    """One unit as the model reads it: dated, named, and focused on the query as v1 does."""
+
     if chunk.kind == "trace" and chunk.trace_id in traces:
         trace = traces[chunk.trace_id]
         waves = ",".join(trace.wavelengths) if trace.wavelengths else "-"
         return f"{trace.id}  {waves}  {chunk.text}\n"
-    return f"{chunk.at[:10]}  {chunk.speaker or chunk.kind}  {chunk.text}\n"
+    date = chunk.at[:10]
+    if chunk.kind == "episode":
+        user, _, reply = chunk.text.partition(SEP)
+        asker, _, answerer = chunk.speaker.partition(SEP)
+        line = f"{date}  {asker}  {focus(user, query, USER_CHARS)}\n"
+        if reply:
+            line += f"{date}  {answerer}  {focus(reply, query, REPLY_CHARS)}\n"
+        return line
+    limit = USER_CHARS if chunk.kind == "user" else REPLY_CHARS
+    return f"{date}  {chunk.speaker or chunk.kind}  {focus(chunk.text, query, limit)}\n"
 
 
 def assemble_indexed(
@@ -468,7 +524,7 @@ def assemble_indexed(
         if chunk.id in seen:
             continue
         # Each line is estimated on its own; the sum is never below the whole.
-        cost = estimate_tokens(_chunk_line(chunk, traces))
+        cost = estimate_tokens(_chunk_line(chunk, traces, text))
         if cost <= room:
             chosen.append(chunk)
             seen.add(chunk.id)
@@ -477,9 +533,9 @@ def assemble_indexed(
     said = sorted((c for c in chosen if c.kind != "trace"), key=lambda c: (c.position, c.id))
     body = (
         head
-        + "".join(_chunk_line(c, traces) for c in shown_traces)
+        + "".join(_chunk_line(c, traces, text) for c in shown_traces)
         + recent
-        + "".join(_chunk_line(c, traces) for c in said)
+        + "".join(_chunk_line(c, traces, text) for c in said)
         + tail
     )
     passes = {c.position for c in said}

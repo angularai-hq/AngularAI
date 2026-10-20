@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from angularai.evals.dataset import Question, Turn
-from angularai.index import CortexIndex, task_prefixes
+from angularai.index import CortexIndex, Unit, task_prefixes
 from angularai.models import PassRecord
 from angularai.pilot import pass_turn
 from angularai.semantic import Embedder
@@ -85,6 +85,8 @@ def answer_v1(
     v2: bool = False,
     embedder: Embedder | None = None,
     context: int = 0,
+    unit: Unit = "sentence",
+    word_rank: bool = False,
 ) -> V1Answer:
     init_cortex(root)
     store = open_store(root)
@@ -107,7 +109,13 @@ def answer_v1(
     if v2:
         document, query = task_prefixes(embedder.model if embedder is not None else "")
         index = CortexIndex(
-            root, embedder, document_prefix=document, query_prefix=query, context=context
+            root,
+            embedder,
+            document_prefix=document,
+            query_prefix=query,
+            context=context,
+            unit=unit,
+            word_rank=word_rank,
         )
     try:
         result = pass_turn(store, substrate, v1_input(question), index=index)

@@ -28,6 +28,7 @@ from angularai.evals.scoring import (
     usage,
     verdict,
 )
+from angularai.index import Unit
 from angularai.semantic import Embedder
 from angularai.substrate import Substrate
 
@@ -70,6 +71,8 @@ def answer(
     substrate: Substrate | None = None,
     embedder: Embedder | None = None,
     context: int = 0,
+    unit: Unit = "sentence",
+    word_rank: bool = False,
 ) -> Record:
     record: Record = {
         "id": question.id,
@@ -100,6 +103,8 @@ def answer(
                     v2=arm == "v2",
                     embedder=embedder,
                     context=context,
+                    unit=unit,
+                    word_rank=word_rank,
                 )
             record.update(
                 prediction=result.reply,
@@ -112,6 +117,8 @@ def answer(
                     chunks=result.chunks,
                     embed_model=None if embedder is None else embedder.model,
                     context=context,
+                    unit=unit,
+                    word_rank=word_rank,
                 )
         else:
             prompt = _prompt(arm, question, budget)
@@ -146,6 +153,8 @@ def run(
     substrate: Substrate | None = None,
     embedder: Embedder | None = None,
     context: int = 0,
+    unit: Unit = "sentence",
+    word_rank: bool = False,
     progress: Progress | None = None,
 ) -> int:
     """Answer every question not yet in out. Returns how many were answered now."""
@@ -163,6 +172,8 @@ def run(
             substrate=substrate,
             embedder=embedder,
             context=context,
+            unit=unit,
+            word_rank=word_rank,
         )
         append(out, record)
         count += 1

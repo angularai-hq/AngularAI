@@ -15,6 +15,7 @@ from angularai.evals.client import PAID_KEYS, Chat, EvalError, require_local
 from angularai.evals.dataset import DatasetError, fetch, load
 from angularai.evals.reduce import read_subset, reduce, write_subset
 from angularai.evals.runner import ARMS, Arm, judge, markdown, report, run
+from angularai.index import UNITS, Unit
 from angularai.provider import Policy
 from angularai.semantic import EmbeddingsAPI
 from angularai.substrate import substrate_for
@@ -72,6 +73,8 @@ def parser() -> argparse.ArgumentParser:
     go.add_argument("--allow-remote", action="store_true")
     go.add_argument("--embed-model", default=None, help="v2: a local embedding model.")
     go.add_argument("--context", type=int, default=0, help="v2: neighbor chunks per hit.")
+    go.add_argument("--unit", choices=UNITS, default="sentence", help="v2: what one row is.")
+    go.add_argument("--word-rank", action="store_true", help="v2: fuse v1's word overlap too.")
 
     grade = sub.add_parser("judge", help="Grade predictions with the official prompts.")
     grade.add_argument("--subset", type=Path, required=True)
@@ -138,6 +141,8 @@ def _dispatch(args: argparse.Namespace) -> int:
             substrate=substrate,
             embedder=embedder,
             context=args.context,
+            unit=cast(Unit, args.unit),
+            word_rank=args.word_rank,
             progress=_say,
         )
         _say(f"{made} answered")

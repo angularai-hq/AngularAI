@@ -392,3 +392,45 @@ def test_say_with_the_index_and_no_embedding_key_is_lexical(
     captured = capsys.readouterr()
     assert captured.out == "Blue.\n" and "Recall is lexical." in captured.err
     assert "blue notebook" in scripted.seen[0].user
+
+
+def test_episode_units_render_like_v1_with_dates(tmp_path: Path) -> None:
+    long_reply = " ".join(f"Point {i} is about gardens." for i in range(40)) + " Use tulips."
+    store = cortex(
+        tmp_path / "c",
+        episode("2023-05-01T10:00:00", "Which flower for spring?", long_reply),
+        episode("2023-05-02T10:00:00", "Unrelated chat.", "Sure."),
+    )
+    index = CortexIndex(store.root, Fake(), unit="episode")
+    assert index.sync(store) == 2
+    view = store.view()
+    hits = index.search(view, "spring flower tulips")
+    assert hits[0].chunk.kind == "episode"
+    workspace = assemble_indexed(
+        view, hits, index.newest(), "spring flower tulips?", store.config()
+    )
+    assert "2023-05-01  you  Which flower for spring?\n" in workspace.user
+    assert "2023-05-01  angularai  " in workspace.user and "Use tulips." in workspace.user
+    reply_line = next(
+        x for x in workspace.user.split("\n") if x.startswith("2023-05-01  angularai")
+    )
+    assert len(reply_line) <= len("2023-05-01  angularai  ") + 400
+    index.close()
+
+
+def test_turn_units_and_word_rank(tmp_path: Path) -> None:
+    store = cortex(
+        tmp_path / "c",
+        episode("2023-05-01T10:00:00", "My notebook is blue.", "Noted the colour."),
+        episode("2023-05-02T10:00:00", "Lunch at noon.", None),
+    )
+    index = CortexIndex(store.root, unit="turn", word_rank=True)
+    assert index.sync(store) == 3
+    hits = index.search(store.view(), "notebook")
+    assert [h.chunk.kind for h in hits][:1] == ["user"]
+    assert index._words("notebook blue", 5) == [hits[0].chunk.id]
+    index.close()
+    # Another unit is another index: it is rebuilt.
+    again = CortexIndex(store.root, unit="episode")
+    assert again.chunks() == 0 and again.sync(store) == 2
+    again.close()
