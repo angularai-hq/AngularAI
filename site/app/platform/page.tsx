@@ -3,6 +3,7 @@ import { PageShell, Md } from "@/components/PageShell";
 import { RailSection } from "@/components/Section";
 import { LabelLink } from "@/components/Chevron";
 import { LAYERS } from "@/lib/layers";
+import { PassDiagram } from "@/components/Diagram";
 import { readRepo, render, section } from "@/lib/md";
 import { SITE } from "@/lib/site";
 
@@ -41,7 +42,11 @@ export default function Platform() {
         </div>
       </nav>
 
-      <RailSection id="cortex" label="Cortex">
+      <RailSection id="pass" label="One pass" reveal="fade">
+        <PassDiagram />
+      </RailSection>
+
+      <RailSection id="cortex" label="Cortex" className="!pt-0">
         <div className="md">
           <h3 className="!mt-0">{L.cortex.line}</h3>
           <p>{L.cortex.body}</p>

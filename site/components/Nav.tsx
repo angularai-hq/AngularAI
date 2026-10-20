@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Lockup } from "./Logo";
+import { KnotLockup } from "./Knot";
 import { SITE } from "@/lib/site";
 
 const LINKS = [
@@ -17,7 +17,7 @@ export function Nav({ tone = "ink", overlay = false }: { tone?: "ink" | "white";
     <header className={`${overlay ? "absolute inset-x-0 top-0" : "relative"} z-20 ${text}`}>
       <div className={`wrap flex h-[72px] items-center justify-between border-b ${line} lg:h-[88px]`}>
         <Link href="/" className="-my-2 py-2" aria-label="Angular AI, home">
-          <Lockup tone={tone} className="h-[28px] w-auto lg:h-[34px]" />
+          <KnotLockup id={`nav-${tone}`} tone={tone} className="h-[28px] w-auto lg:h-[34px]" />
         </Link>
         <nav aria-label="Main" className="hidden md:block">
           <ul className="flex items-center gap-8">

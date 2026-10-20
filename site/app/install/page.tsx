@@ -24,7 +24,7 @@ export default function Install() {
     >
       <RailSection id="command" label="Command" className="!pt-4">
         <div className="max-w-[760px]">
-          <CodeBlock code={SITE.install} />
+          <CodeBlock code={SITE.install} typing />
           <div className="md mt-6">
             <p>The script puts <code>angularai</code> on your PATH. It does not read or store a key. If <code>uv</code> is missing, it installs it first. Run it as your user, not as root. <code>ANGULARAI_INSTALL_PLAN=1</code> prints what it would do and changes nothing.</p>
             <p><a href={asset("/install.sh")}>Read install.sh</a></p>
