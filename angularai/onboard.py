@@ -174,6 +174,8 @@ def setup_command(
     vault: Vault | None = None,
     tester: Probe = _default_probe,
 ) -> int:
+    if terminal is None and _flagless(args) and tui_ok(environ):
+        return _setup_tui(environ, vault, tester, make_active=True)
     term = terminal or system_terminal()
     flow = _Flow(environ, term, vault or Vault(environ), tester)
     return flow.run(args, make_active=True)
@@ -186,9 +188,17 @@ def model_command(
     vault: Vault | None = None,
     tester: Probe = _default_probe,
 ) -> int:
+    command = args.model_command
+    if terminal is None and command is None and tui_ok(environ):
+        from angularai.setup_tui import run_manage_tui
+
+        run_manage_tui(environ, vault, tester=tester)
+        return 0
+    if terminal is None and command == "add" and _flagless(args) and tui_ok(environ):
+        active = load_book(environ).active is None
+        return _setup_tui(environ, vault, tester, make_active=bool(args.use) or active)
     term = terminal or system_terminal()
     keys = vault or Vault(environ)
-    command = args.model_command
     if command is None or command == "list":
         return _list(environ, term, as_json=bool(getattr(args, "json", False)))
     if command == "add":
@@ -207,6 +217,58 @@ def model_command(
         return 0
     term.err("Unknown model command.")
     return 2
+
+
+def tui_ok(environ: Mapping[str, str]) -> bool:
+    """The setup and model screens: a real terminal on both ends, not CI, not TERM=dumb."""
+
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        return False
+    if environ.get("CI", "").strip() not in {"", "0", "false"}:
+        return False
+    return environ.get("TERM", "dumb") not in {"", "dumb"}
+
+
+def _flagless(args: argparse.Namespace) -> bool:
+    """No flag that answers a question: the screens ask them all."""
+
+    return (
+        getattr(args, "provider", None) is None
+        and getattr(args, "model_id", None) is None
+        and getattr(args, "base_url", None) is None
+        and getattr(args, "save_as", None) is None
+        and not getattr(args, "key_stdin", False)
+    )
+
+
+def _setup_tui(
+    environ: Mapping[str, str],
+    vault: Vault | None,
+    tester: Probe,
+    *,
+    make_active: bool,
+    first_use: bool = False,
+) -> int:
+    """The setup screens. What was saved is printed after, so it stays in the scrollback."""
+
+    from angularai.setup_tui import run_setup_tui
+
+    result = run_setup_tui(
+        environ, vault, tester=tester, first_use=first_use, make_active=make_active
+    )
+    if result is None:
+        print("Nothing was saved.", file=sys.stderr)
+        return 1
+    saved = result.profile
+    print(f"Saved {saved.name}  {saved.provider}  {saved.model}")
+    print(result.where)
+    if result.env_note:
+        print(result.env_note)
+    if load_book(environ).active == saved.name:
+        print(f"Active model: {saved.name}")
+    else:
+        print(f"Switch with: angularai model use {saved.name}")
+    return 0
 
 
 def _note_overrides(found: Profile, environ: Mapping[str, str], term: Terminal) -> None:
@@ -466,22 +528,30 @@ def offer_setup(
     terminal: Terminal | None = None,
     vault: Vault | None = None,
     tester: Probe = _default_probe,
-) -> None:
+) -> str | None:
     """On a terminal with nothing configured, offer setup once before the command runs.
 
     Nothing configured: no saved model, no provider key or ANGULARAI_MODEL in the
-    environment, and a cortex that is missing or not wired. Never in CI.
+    environment, and a cortex that is missing or not wired. Never in CI. On a real
+    terminal it is the setup screens; "cancelled" when they were left without saving.
     """
 
     term = terminal or system_terminal()
     if not term.interactive or environ.get("CI", "").strip():
-        return
+        return None
     if anything_configured(environ) or _wired(root):
-        return
+        return None
+    if terminal is None and tui_ok(environ):
+        if _setup_tui(environ, vault, tester, make_active=True, first_use=True) != 0:
+            return "cancelled"
+        if not (root / "cortex.json").exists():
+            init_cortex(root)
+            print(f"Cortex is at {root}")
+        return None
     term.out("No model is set up yet.")
     answer = term.ask("Set one up now? [Y/n]: ").strip().lower()
     if answer not in {"", "y", "yes"}:
-        return
+        return None
     args = argparse.Namespace(
         provider=None,
         model_id=None,
@@ -492,10 +562,11 @@ def offer_setup(
         replace=False,
     )
     if _Flow(environ, term, vault or Vault(environ), tester).run(args, make_active=True) != 0:
-        return
+        return None
     if not (root / "cortex.json").exists():
         init_cortex(root)
         term.out(f"Cortex is at {root}")
+    return None
 
 
 def _wired(root: Path) -> bool:

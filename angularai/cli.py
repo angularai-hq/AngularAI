@@ -60,8 +60,9 @@ def _dispatch(args: argparse.Namespace, cortex: Path | None, name: str | None) -
         return model_command(args)
     if command is None:
         _boot(root)
-    if command in {None, "say", "agent"}:
-        offer_setup(root)
+    if command in {None, "say", "agent"} and offer_setup(root) == "cancelled":
+        print("Setup was left. Run angularai setup when you are ready.", file=sys.stderr)
+        return 0 if command is None else 1
     if command is None:
         return _open_session(_open(root))
     if command == "repair":
