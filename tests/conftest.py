@@ -52,3 +52,10 @@ def no_ambient_cortex_or_keys(monkeypatch: pytest.MonkeyPatch) -> None:
         "ANGULARAI_API_KEY",
     ):
         monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def no_boot_animation(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The boot mark never plays into a test's terminal. Its own tests pass an env."""
+
+    monkeypatch.setenv("ANGULARAI_NO_BOOT", "1")

@@ -273,8 +273,17 @@ def _lock(root: Path, args: argparse.Namespace) -> int:
 def _open_session(store: Store) -> int:
     store.passes()
     if sys.stdin.isatty() and sys.stdout.isatty():
+        _boot()
         return run_tui(store, _speak)
     return _repl(store)
+
+
+def _boot() -> None:
+    """The boot mark, imported only here so no other command pays for it."""
+
+    from angularai.boot import run
+
+    run(__version__)
 
 
 def _repl(store: Store) -> int:
