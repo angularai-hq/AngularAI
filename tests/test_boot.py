@@ -216,6 +216,20 @@ def test_without_a_terminal_nothing_is_written() -> None:
     assert out.getvalue() == ""
 
 
+def _settings(fd: int) -> list[object]:
+    """The terminal's mode. PENDIN is left out: BSD and macOS set it themselves when
+    canonical input comes back on, to retype what is pending. It is not ours to restore.
+    """
+
+    import termios
+
+    attrs: list[object] = list(termios.tcgetattr(fd))
+    lflag = attrs[3]
+    assert isinstance(lflag, int)
+    attrs[3] = lflag & ~termios.PENDIN
+    return attrs
+
+
 @dataclass
 class Pty:
     stdin: TextIO
@@ -225,9 +239,7 @@ class Pty:
     slave: int
 
     def attrs(self) -> list[object]:
-        import termios
-
-        return list(termios.tcgetattr(self.slave))
+        return _settings(self.slave)
 
     def press(self, key: bytes, after: float) -> threading.Timer:
         timer = threading.Timer(after, os.write, (self.master, key))
@@ -347,13 +359,19 @@ def test_in_a_small_or_quiet_pty_nothing_is_written(terminal: Pty) -> None:
 
 _CHILD = """
 import json, sys, termios
-from angularai import __version__, boot
-before = termios.tcgetattr(0)
+from angularai import boot
+
+def settings():
+    attrs = termios.tcgetattr(0)
+    attrs[3] &= ~termios.PENDIN
+    return attrs
+
+before = settings()
 try:
     outcome = boot.run("0.1.0")
 except KeyboardInterrupt:
     outcome = "interrupted"
-after = termios.tcgetattr(0)
+after = settings()
 with open(sys.argv[1], "w") as report:
     json.dump({"outcome": outcome, "restored": before == after}, report)
 """
