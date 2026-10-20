@@ -69,7 +69,15 @@ Lexical attention by default. `ANGULARAI_EMBEDDINGS` adds recall by meaning.
 curl -fsSL https://angularai-hq.github.io/AngularAI/install.sh | sh
 ```
 
-The cortex is `~/.angularai/default`, readable only by you. The key stays in the environment. It is not a field in the cortex.
+The cortex is `~/.angularai/default`, readable only by you. The key is not a field in the cortex.
+
+```bash
+angularai setup
+```
+
+Pick a provider, a model, and a key. The key is hidden as you type and never shown again, only its tail: `sk-…a1b2`. One tiny call tests it, then it is saved and made active. `angularai` in a terminal with nothing set up offers this first.
+
+Or keep the key in the environment and wire the cortex:
 
 ```bash
 export OPENAI_API_KEY=...
@@ -84,6 +92,45 @@ angularai wire compatible --model <model> --base-url http://127.0.0.1:11434/v1
 
 From a checkout, `uv sync` then `uv run angularai`. `uv tool install --editable .` puts the command on your PATH.
 
+## Models
+
+```bash
+angularai setup
+angularai model
+angularai model add --provider ollama --model llama3.2
+angularai model use ollama
+angularai model remove openai
+```
+
+| command | |
+| --- | --- |
+| `setup` | Save a model and its key, test it, make it active. |
+| `model`, `model list` | The saved models. `*` is active. A key shows as its last four characters. `--json` for scripts. |
+| `model add` | Save another. It becomes active with `--use`. |
+| `model use NAME` | Make one active. |
+| `model remove NAME` | Remove one and its key. |
+
+Providers: `openai`, `anthropic`, `ollama` (a compatible server on `http://127.0.0.1:11434/v1`, no key), `compatible` (any OpenAI-compatible `--base-url`). The test is one prompt of one word, a few tokens back, within 60 seconds. A rejected key, a quota, a missing model, or nothing listening is named, and nothing is saved. On a terminal you may save anyway. `--skip-test` skips it.
+
+Without a terminal, flags say everything and the key comes on stdin. There is no flag for the key itself, so it never reaches the process list or the shell history.
+
+```bash
+printf '%s\n' "$KEY" | angularai setup --provider openai --model <model> --key-stdin
+angularai setup --provider ollama --model llama3.2
+```
+
+`setup` without a terminal and without `--provider` and `--model` fails and says so. In CI (`CI` set) nothing is offered.
+
+### Where it is kept
+
+The saved models are `models.json` in the AngularAI home (`ANGULARAI_HOME`, else `~/.angularai`): name, provider, model, base URL, the active one, and the key's last four characters. No key. The key goes to the OS keyring: Keychain on macOS, Secret Service on Linux, Credential Manager on Windows. Without a usable keyring, a headless Linux box for example, it goes to `keys.json` beside it, mode 0600 from its first byte, replaced atomically. `setup` says which. `PYTHON_KEYRING_BACKEND` picks a keyring backend.
+
+### What wins
+
+The model: `ANGULARAI_MODEL` (a saved name), else the cortex's `angularai wire`, else the active saved model. The key: the provider's variable (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `ANGULARAI_API_KEY`), else the saved key of the saved model in use. A wired cortex reads its key from the environment only. `angularai status` shows which model and where its key comes from.
+
+A pass redacts the saved key in use as it redacts a key in the environment: in the reply, in tool output, and in what it writes. The key is never printed, logged, or put in an error. Recall by meaning (`ANGULARAI_EMBEDDINGS`) still reads its key from the environment.
+
 ## Speak
 
 ```bash
@@ -94,7 +141,7 @@ angularai
 
 `angularai` in a terminal is the session. `/` opens the commands. `/clear` clears the screen. The cortex stays on disk. `angularai say` prints only the reply.
 
-The session opens on the mark for about a second. A key skips it. `NO_COLOR` shows it still. `ANGULARAI_NO_BOOT=1` leaves it out.
+The session opens on the mark for about a second, before the setup offer. A key skips it. `NO_COLOR` shows it still. `ANGULARAI_NO_BOOT=1` leaves it out.
 
 ## Work
 

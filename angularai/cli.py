@@ -11,6 +11,7 @@ from angularai.configure import add_lock, remove_lock, set_budget, wire
 from angularai.errors import AngularAIError, InputRejected, KeyMissing, NoCortex
 from angularai.models import SubstrateKind
 from angularai.names import cortex_home, label, list_names, named_root, resolve_root
+from angularai.onboard import add_commands, model_command, offer_setup, setup_command
 from angularai.peers import (
     DEFAULT_TOKENS,
     DEFAULT_TURNS,
@@ -22,6 +23,7 @@ from angularai.peers import (
 )
 from angularai.pilot import pass_turn, screen
 from angularai.present import format_banner, format_locks, format_recall, format_traces
+from angularai.profiles import anything_configured
 from angularai.semantic import SemanticRecall, embedder_from_env, minimum_from_env
 from angularai.session import cortex_status, session_command
 from angularai.store import CORRUPT, Store, init_cortex, open_store
@@ -52,6 +54,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 def _dispatch(args: argparse.Namespace, cortex: Path | None, name: str | None) -> int:
     root = _root(cortex, name)
     command = args.command
+    if command == "setup":
+        return setup_command(args)
+    if command == "model":
+        return model_command(args)
+    if command is None:
+        _boot(root)
+    if command in {None, "say", "agent"}:
+        offer_setup(root)
     if command is None:
         return _open_session(_open(root))
     if command == "repair":
@@ -107,7 +117,7 @@ def _init(root: Path, name: str | None) -> int:
         cortex_home(os.environ).mkdir(parents=True, exist_ok=True, mode=0o700)
     init_cortex(root)
     print(f"Cortex is at {root}")
-    print("Wire a model with: angularai wire openai --model <name>")
+    print("Set up a model with: angularai setup")
     return 0
 
 
@@ -273,14 +283,21 @@ def _lock(root: Path, args: argparse.Namespace) -> int:
 def _open_session(store: Store) -> int:
     store.passes()
     if sys.stdin.isatty() and sys.stdout.isatty():
-        _boot()
         return run_tui(store, _speak)
     return _repl(store)
 
 
-def _boot() -> None:
-    """The boot mark, imported only here so no other command pays for it."""
+def _boot(root: Path) -> None:
+    """The boot mark, before the setup offer and the session.
 
+    It plays only when a session can follow: the cortex exists, or nothing is set up
+    and the offer can make it. Imported only here so no other command pays for it.
+    """
+
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        return
+    if not (root / "cortex.json").exists() and anything_configured(os.environ):
+        return
     from angularai.boot import run
 
     run(__version__)
@@ -369,6 +386,7 @@ def _parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command")
 
     sub.add_parser("init", help="Create a cortex on disk.")
+    add_commands(sub)
 
     wire_parser = sub.add_parser("wire", help="Connect this cortex to a model API.")
     wire_parser.add_argument("kind", choices=("openai", "anthropic", "compatible"))

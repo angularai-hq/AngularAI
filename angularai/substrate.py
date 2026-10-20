@@ -8,6 +8,7 @@ from typing import Protocol, assert_never
 
 from angularai.budget import estimate_tokens
 from angularai.errors import (
+    AngularAIError,
     AuthFailed,
     BadResponse,
     Forbidden,
@@ -28,6 +29,7 @@ from angularai.errors import (
 from angularai.http import http_json
 from angularai.models import Config, Integration, SubstrateKind, Workspace
 from angularai.parse import parse_integration
+from angularai.profiles import KEY_ENVS, Vault, effective_config, saved_key
 from angularai.provider import (
     Clock,
     Deadline,
@@ -170,6 +172,15 @@ class OpenAICompatible:
                 raise
             return parse_integration(self._complete(deadline, workspace, False, extra))
 
+    def ping(self) -> None:
+        payload: dict[str, object] = {
+            "model": self._model,
+            self._completion_field: 16,
+            "messages": [{"role": "user", "content": "ping"}],
+        }
+        url = f"{self._base_url}/chat/completions"
+        self._caller.post(self._caller.deadline(), url, _openai_headers(self._api_key), payload)
+
     def _complete(
         self, deadline: Deadline, workspace: Workspace, json_mode: bool, user: str
     ) -> str:
@@ -184,13 +195,26 @@ class OpenAICompatible:
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
         url = f"{self._base_url}/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {self._api_key}",
-            "Content-Type": "application/json",
-            "User-Agent": "angularai/0.1.0",
-        }
-        reply = self._caller.post(deadline, url, headers, payload)
+        reply = self._caller.post(deadline, url, _openai_headers(self._api_key), payload)
         return openai_text(reply, self._caller.provider)
+
+
+def _openai_headers(api_key: str) -> dict[str, str]:
+    """A local server without a key gets no Authorization header at all."""
+
+    headers = {"Content-Type": "application/json", "User-Agent": "angularai/0.1.0"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    return headers
+
+
+def _anthropic_headers(api_key: str) -> dict[str, str]:
+    return {
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+        "User-Agent": "angularai/0.1.0",
+    }
 
 
 class Anthropic:
@@ -224,6 +248,15 @@ class Anthropic:
                 raise
             return parse_integration(self._complete(deadline, workspace.system, extra))
 
+    def ping(self) -> None:
+        payload: dict[str, object] = {
+            "model": self._model,
+            "max_tokens": 1,
+            "messages": [{"role": "user", "content": "ping"}],
+        }
+        url = f"{self._base_url}/messages"
+        self._caller.post(self._caller.deadline(), url, _anthropic_headers(self._api_key), payload)
+
     def _complete(self, deadline: Deadline, system: str, user: str) -> str:
         payload: dict[str, object] = {
             "model": self._model,
@@ -232,74 +265,140 @@ class Anthropic:
             "messages": [{"role": "user", "content": user}],
         }
         url = f"{self._base_url}/messages"
-        headers = {
-            "x-api-key": self._api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-            "User-Agent": "angularai/0.1.0",
-        }
-        reply = self._caller.post(deadline, url, headers, payload)
+        reply = self._caller.post(deadline, url, _anthropic_headers(self._api_key), payload)
         return anthropic_text(reply, self._caller.provider)
 
 
-def build_substrate(config: Config, environ: Mapping[str, str]) -> Substrate:
+def build_substrate(
+    config: Config, environ: Mapping[str, str], *, vault: Vault | None = None
+) -> Substrate:
+    """The substrate a pass calls. See angularai.profiles for which model and key win."""
+
+    config, profile = effective_config(config, environ)
     if config.substrate is None or config.model is None:
         raise InputRejected(
-            "This cortex has no model. Wire one with: angularai wire openai --model <name>"
+            "This cortex has no model. Set one up with: angularai setup, "
+            "or wire one with: angularai wire openai --model <name>"
         )
     kind = config.substrate
     env_name = key_env(kind)
     key = environ.get(env_name, "").strip()
-    if not key:
+    if not key and profile is not None:
+        key = (saved_key(profile, environ, vault) or "").strip()
+        if not key and profile.storage != "none":
+            raise KeyMissing(
+                f"The key of saved model {profile.name} is gone. "
+                f"Run angularai setup again, or set {env_name}."
+            )
+        if not key and kind != "compatible":
+            raise KeyMissing(f"{env_name} is not set. Saved model {profile.name} keeps no key.")
+    elif not key:
         raise KeyMissing(f"{env_name} is not set. The key stays in the environment.")
-    policy = policy_from_env(environ)
+    return substrate_for(kind, config.model, config.base_url, key, policy_from_env(environ))
+
+
+def substrate_for(
+    kind: SubstrateKind,
+    model: str,
+    base_url: str | None,
+    key: str,
+    policy: Policy,
+    *,
+    json_mode: bool | None = None,
+    transport: Transport | None = None,
+    clock: Clock | None = None,
+) -> "OpenAICompatible | Anthropic":
+    json_on = kind == "openai" if json_mode is None else json_mode
     if kind == "openai":
         return OpenAICompatible(
             policy=policy,
             provider="OpenAI",
-            model=config.model,
-            base_url=config.base_url or "https://api.openai.com/v1",
+            model=model,
+            base_url=base_url or OPENAI_URL,
             api_key=key,
-            json_mode=config.json_mode,
+            json_mode=json_on,
             completion_field="max_completion_tokens",
+            transport=transport,
+            clock=clock,
         )
     if kind == "anthropic":
         return Anthropic(
             policy=policy,
             provider="Anthropic",
-            model=config.model,
-            base_url=config.base_url or "https://api.anthropic.com/v1",
+            model=model,
+            base_url=base_url or ANTHROPIC_URL,
             api_key=key,
+            transport=transport,
+            clock=clock,
         )
     if kind == "compatible":
-        if config.base_url is None:
+        if base_url is None:
             raise InputRejected("A compatible substrate needs --base-url.")
         return OpenAICompatible(
             policy=policy,
             provider="compatible",
-            model=config.model,
-            base_url=config.base_url,
+            model=model,
+            base_url=base_url,
             api_key=key,
-            json_mode=config.json_mode,
+            json_mode=json_on,
             completion_field="max_tokens",
+            transport=transport,
+            clock=clock,
         )
     assert_never(kind)
 
 
-def secret_values(environ: Mapping[str, str]) -> tuple[str, ...]:
-    """Every value in the environment whose variable name says it is a secret."""
+OPENAI_URL = "https://api.openai.com/v1"
+ANTHROPIC_URL = "https://api.anthropic.com/v1"
+PROBE_POLICY = Policy(connect_timeout=5.0, read_timeout=60.0, deadline=60.0, attempts=1)
 
-    return environment_secrets(environ)
+
+def probe(
+    kind: SubstrateKind,
+    model: str,
+    base_url: str | None,
+    key: str,
+    *,
+    policy: Policy = PROBE_POLICY,
+    transport: Transport | None = None,
+    clock: Clock | None = None,
+) -> None:
+    """One tiny call: a one-word prompt, a few tokens back. Raises the provider's error.
+
+    Any 2xx JSON object passes: the key, the model, and the endpoint all answered.
+    """
+
+    substrate = substrate_for(kind, model, base_url, key, policy, transport=transport, clock=clock)
+    substrate.ping()
+
+
+def secret_values(environ: Mapping[str, str]) -> tuple[str, ...]:
+    """Every value in the environment whose variable name says it is a secret, and the
+    saved key of the saved model in use, so a pass redacts it like any other."""
+
+    found = environment_secrets(environ)
+    try:
+        key = _saved_in_use(environ)
+    except AngularAIError:
+        key = None
+    if key and key not in found:
+        return (*found, key)
+    return found
+
+
+def _saved_in_use(environ: Mapping[str, str]) -> str | None:
+    from angularai.profiles import load_book
+
+    book = load_book(environ)
+    picked = environ.get("ANGULARAI_MODEL", "").strip() or book.active
+    profile = None if picked is None else book.get(picked)
+    if profile is None or profile.storage == "none":
+        return None
+    return saved_key(profile, environ)
 
 
 def key_env(kind: SubstrateKind) -> str:
-    if kind == "openai":
-        return "OPENAI_API_KEY"
-    if kind == "anthropic":
-        return "ANTHROPIC_API_KEY"
-    if kind == "compatible":
-        return "ANGULARAI_API_KEY"
-    assert_never(kind)
+    return KEY_ENVS[kind]
 
 
 def openai_text(payload: Mapping[str, object], provider: str = "") -> str:

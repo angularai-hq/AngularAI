@@ -429,17 +429,43 @@ def test_a_real_ctrl_c_in_a_real_terminal_restores_it(tmp_path: Path) -> None:
     assert output.decode().endswith(boot.LEAVE)
 
 
-def test_the_session_plays_it_and_a_command_does_not(
+def test_the_session_plays_it_before_the_setup_offer_and_a_command_does_not(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     init_cortex(tmp_path)
-    played: list[str] = []
-    monkeypatch.setattr("angularai.boot.run", lambda version: played.append(version))
-    monkeypatch.setattr("angularai.cli.run_tui", lambda store, speak: 0)
+    seen: list[str] = []
+    monkeypatch.setattr("angularai.boot.run", lambda version: seen.append(f"boot {version}"))
+    monkeypatch.setattr("angularai.cli.offer_setup", lambda root: seen.append("offer"))
+
+    def tui(store: object, speak: object) -> int:
+        seen.append("tui")
+        return 0
+
+    monkeypatch.setattr("angularai.cli.run_tui", tui)
     monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
     monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
     assert main(["--cortex", str(tmp_path), "status"]) == 0
+    assert seen == []
+    assert main(["--cortex", str(tmp_path)]) == 0
+    assert seen == [f"boot {__version__}", "offer", "tui"]
+
+
+def test_no_mark_before_an_error_or_without_a_terminal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    played: list[str] = []
+    monkeypatch.setattr("angularai.boot.run", lambda version: played.append(version))
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setenv("ANGULARAI_MODEL", "openai:gpt-test")
+    assert main(["--cortex", str(tmp_path / "missing")]) == 1
     assert played == []
+    monkeypatch.delenv("ANGULARAI_MODEL")
+    assert main(["--cortex", str(tmp_path / "missing")]) == 1
+    assert played == [__version__]
+    init_cortex(tmp_path)
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+    monkeypatch.setattr("builtins.input", lambda prompt: "/quit")
     assert main(["--cortex", str(tmp_path)]) == 0
     assert played == [__version__]
 

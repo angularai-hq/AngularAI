@@ -1,6 +1,6 @@
 """The boot mark: the knot snaps together, then the wordmark and the version.
 
-It plays once, about a second, before the session, and only when stdin and stdout
+It plays once, about a second, before the setup offer and the session, only when stdin and stdout
 are a terminal. It is left out under CI, TERM=dumb or no TERM, ANGULARAI_NO_BOOT=1,
 on Windows, and in a terminal too small for the lockup. Under NO_COLOR it is one
 still frame without color. Any key ends it. Ctrl-C ends it and goes on to quit.
