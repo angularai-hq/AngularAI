@@ -100,3 +100,116 @@ pre code { background: none; border: 0; padding: 0; font-size: inherit; overflow
 .md details > :not(summary) { margin-bottom: 1em; }
 .md details > * + * { margin-top: 0.9em; }
 .mesh-strip { background: linear-gradient(90deg, #13c6a8, #2c9bd8 25%, #6a3cf5 50%, #ffd84a 75%, #ec4a7f); }
+
+/* =====================================================================
+   Motion (PR site/motion-2026). Transform/opacity only. Everything ends
+   fully visible; with prefers-reduced-motion nothing moves (rule above).
+   Spring ease-outs, measured from the film (springs ~d13/s150) and the CLI
+   boot (stagger 100 ms, flight 267 ms, ease-out cubic, wordmark after).
+   ===================================================================== */
+:root {
+  --spring: cubic-bezier(0.34, 1.36, 0.5, 1);      /* snap with a small overshoot */
+  --out: cubic-bezier(0.16, 1, 0.3, 1);            /* long ease-out (expo-like) */
+}
+
+/* ---- Knot: six blocks snap together, then the letters rise. ---- */
+.knot .knot-b { transform-box: view-box; animation: knot-in 640ms var(--spring) both; animation-delay: calc(120ms + var(--i) * 85ms); }
+.knot-lg .knot-b { animation-duration: 900ms; animation-delay: calc(280ms + var(--i) * 110ms); }
+@keyframes knot-in { from { transform: translate(var(--dx), var(--dy)); opacity: 0; } 35% { opacity: 1; } to { transform: none; opacity: 1; } }
+.knot .knot-mark { transform-box: fill-box; transform-origin: center; animation: knot-snap 360ms var(--out) both; animation-delay: 700ms; }
+.knot-lg .knot-mark { animation-delay: 1.15s; }
+@keyframes knot-snap { 0% { transform: scale(1); } 35% { transform: scale(1.045); } 100% { transform: scale(1); } }
+.knot .knot-l { transform-box: fill-box; animation: letter-in 520ms var(--spring) both; animation-delay: calc(560ms + var(--l) * 38ms); }
+@keyframes letter-in { from { transform: translateY(70%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ---- Hero gradient: slow, visible drift + a very slow turn of the whole field (GPU transforms). ---- */
+.mesh .field { position: absolute; inset: -15%; animation: field-turn 48s ease-in-out infinite alternate; will-change: transform; }
+@keyframes field-turn { from { transform: rotate(-14deg) scale(1.05); } to { transform: rotate(16deg) scale(1.12); } }
+.mesh .b1 { animation: drift1 26s ease-in-out infinite alternate; }
+.mesh .b2 { animation: drift2 31s ease-in-out infinite alternate; }
+.mesh .b3 { animation: drift3 23s ease-in-out infinite alternate; }
+.mesh .b4 { animation: drift4 28s ease-in-out infinite alternate; }
+.mesh .b5 { animation: drift5 34s ease-in-out infinite alternate; }
+.mesh .b6 { animation: drift6 21s ease-in-out infinite alternate; }
+@keyframes drift1 { 50% { transform: translate3d(12vmax, 16vmax, 0) scale(1.15); } to { transform: translate3d(24vmax, 6vmax, 0) scale(0.95); } }
+@keyframes drift2 { 50% { transform: translate3d(-16vmax, 10vmax, 0) scale(0.88); } to { transform: translate3d(-8vmax, 22vmax, 0) scale(1.1); } }
+@keyframes drift3 { 50% { transform: translate3d(18vmax, -12vmax, 0) scale(1.18); } to { transform: translate3d(-10vmax, -6vmax, 0) scale(1); } }
+@keyframes drift4 { 50% { transform: translate3d(-20vmax, -8vmax, 0) scale(1.1); } to { transform: translate3d(-6vmax, -18vmax, 0) scale(0.92); } }
+@keyframes drift5 { 50% { transform: translate3d(-14vmax, 18vmax, 0) scale(1.2); } to { transform: translate3d(12vmax, 8vmax, 0) scale(0.9); } }
+@keyframes drift6 { 50% { transform: translate3d(16vmax, -14vmax, 0) scale(0.86); } to { transform: translate3d(26vmax, -4vmax, 0) scale(1.08); } }
+
+/* ---- Hero entrance: line, link and cards rise in once (CSS only; LCP-safe: opacity starts > 0). ---- */
+.rise { animation: rise 900ms var(--out) backwards; animation-delay: calc(var(--d, 0) * 1ms); }
+@keyframes rise { from { transform: translateY(18px); opacity: 0.01; } to { transform: none; opacity: 1; } }
+
+/* ---- Scroll reveals: only when the inline script has marked <html data-motion>.
+   Without JS (or with reduced motion) nothing is hidden. ---- */
+html[data-motion] [data-reveal] { transition: transform 900ms var(--spring), opacity 700ms var(--out); transition-delay: calc(var(--d, 0) * 1ms); }
+html[data-motion] [data-reveal]:not([data-in]) { opacity: 0; transform: translateY(28px); }
+html[data-motion] [data-reveal="fade"]:not([data-in]) { transform: none; }
+html[data-motion] [data-reveal="scale"]:not([data-in]) { transform: translateY(20px) scale(0.97); }
+
+/* ---- Release cards: lift + image push on hover/focus. ---- */
+.card { transition: transform 420ms var(--spring), box-shadow 420ms var(--out); }
+.card .art { overflow: hidden; }
+.card .art img { transition: transform 900ms var(--out); }
+.card:hover, .card:focus-visible { transform: translateY(-6px); box-shadow: 0 28px 50px -24px rgb(11 11 15 / 0.55); }
+.card:hover .art img, .card:focus-visible .art img { transform: scale(1.04); }
+.card .chev { display: inline-block; transition: transform 300ms var(--spring); }
+.card:hover .chev { transform: translateX(3px); }
+
+/* ---- Terminal typing for the install line. The text is real (selectable, copyable, in the HTML);
+   only its visibility is clipped while it types. Starts when the block is revealed. ---- */
+.typed { display: inline-block; white-space: pre; vertical-align: top; }
+.caret { display: none; }
+html[data-motion] .type-on .typed { clip-path: inset(0 100% 0 0); }
+html[data-motion] .type-on[data-in] .typed { animation: type var(--type-ms, 1600ms) steps(var(--n), end) 350ms both; }
+html[data-motion] .type-on .caret { display: inline-block; width: 0.6em; height: 1.2em; margin-left: 1px; vertical-align: -0.2em; background: #ec4a7f; transform: translateX(calc(var(--n) * -1ch)); }
+html[data-motion] .type-on[data-in] .caret { animation: caret-move var(--type-ms, 1600ms) steps(var(--n), end) 350ms both, caret-blink 1s steps(1) calc(350ms + var(--type-ms, 1600ms)) 4 forwards; }
+@keyframes caret-move { from { transform: translateX(calc(var(--n) * -1ch)); } to { transform: none; } }
+@keyframes type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes caret-blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 0; } }
+.prompt { color: #8f8fa3; user-select: none; }
+
+/* ---- Platform diagram ---- */
+.dgm text { font-family: var(--font-sans); }
+.dgm-scroll { overflow-x: auto; border: 1px solid var(--color-hair); border-radius: 12px; background: #fff; }
+.dgm { display: block; width: 100%; min-width: 760px; height: auto; overflow: hidden; }
+.dgm g, .dgm text, .dgm rect, .dgm line { transform-box: view-box; }
+/* 10 s loop; percentages are beats. Static (base) state shows every beat. */
+.dgm-q      { animation: d-q 10s var(--out) infinite both; }
+.dgm-rank   { animation: d-rank 10s ease-out infinite both; }
+.dgm-l1 rect{ animation: d-l1 10s ease-out infinite both; }
+.dgm-pkt    { animation: d-pkt 10s cubic-bezier(.5,0,.2,1) infinite both; }
+.dgm .dgm-meter { transform-box: fill-box; transform-origin: left center; animation: d-meter 10s var(--out) infinite both; }
+.dgm-unsent { animation: d-unsent 10s ease-out infinite both; }
+.dgm .dgm-lock { transform-box: fill-box; transform-origin: center; }
+.dgm-lock-a { animation: d-lock-a 10s ease-out infinite both; }
+.dgm-lock-b { animation: d-lock-b 10s ease-out infinite both; }
+.dgm-lock-c { animation: d-lock-c 10s ease-out infinite both; }
+.dgm-reply  { animation: d-reply 10s cubic-bezier(.5,0,.2,1) infinite both; }
+.dgm-judged { animation: d-judged 10s ease-out infinite both; }
+.dgm-new    { animation: d-new 10s var(--spring) infinite both; }
+.dgm-secret { animation: d-secret 10s cubic-bezier(.3,0,.2,1) infinite both; }
+.dgm-refused{ animation: d-refused 10s ease-out infinite both; }
+.dgm-membrane { animation: d-membrane 1.6s linear infinite; }
+.dgm .dgm-meter { transform: scaleX(0.34); }
+
+@keyframes d-q { 0% { opacity: 0; transform: translateX(-24px); } 6%, 60% { opacity: 1; transform: none; } 66%, 100% { opacity: 0; transform: none; } }
+@keyframes d-rank { 0%, 9% { opacity: 0; } 13%, 66% { opacity: 1; } 72%, 100% { opacity: 0; } }
+@keyframes d-l1 { 0%, 10% { stroke: #d9d9e0; } 14%, 30% { stroke: #ec4a7f; } 36%, 100% { stroke: #d9d9e0; } }
+/* trace copy: cortex (x 40) -> workspace (x 424) -> model (x 760) */
+@keyframes d-pkt { 0%, 16% { opacity: 0; transform: translate(-384px, 0); } 18% { opacity: 1; transform: translate(-384px, 0); } 30%, 38% { opacity: 1; transform: none; } 46% { opacity: 1; transform: translate(250px, 0); } 50%, 100% { opacity: 0; transform: translate(320px, 0); } }
+@keyframes d-meter { 0%, 18% { transform: scaleX(0); } 30%, 54% { transform: scaleX(0.34); } 60%, 100% { transform: scaleX(0); } }
+@keyframes d-unsent { 0%, 28% { opacity: 0; } 32%, 66% { opacity: 1; } 72%, 100% { opacity: 0; } }
+@keyframes d-lock-a { 0%, 42% { transform: none; } 45% { transform: scale(1.2); } 49%, 100% { transform: none; } }
+@keyframes d-lock-b { 0%, 56% { transform: none; } 59% { transform: scale(1.25); } 63%, 100% { transform: none; } }
+@keyframes d-lock-c { 0%, 85% { transform: none; } 86.5% { transform: scale(1.25) rotate(-10deg); } 88% { transform: scale(1.25) rotate(10deg); } 89.5% { transform: scale(1.2) rotate(-5deg); } 92%, 100% { transform: none; } }
+/* reply: model (x 760) -> through the lock -> cortex (x 120) */
+@keyframes d-reply { 0%, 54% { opacity: 0; transform: translate(260px, 0); } 56% { opacity: 1; transform: translate(260px, 0); } 64% { opacity: 1; transform: translate(150px, 0); } 74% { opacity: 1; transform: translate(-340px, 0); } 77%, 100% { opacity: 0; transform: translate(-340px, 0); } }
+@keyframes d-judged { 0%, 60% { opacity: 0; } 64%, 74% { opacity: 1; } 78%, 100% { opacity: 0; } }
+@keyframes d-new { 0%, 73% { opacity: 0; transform: translateY(10px); } 77%, 96% { opacity: 1; transform: none; } 100% { opacity: 0; transform: none; } }
+@keyframes d-secret { 0%, 78% { opacity: 0; transform: translateX(-440px); } 80% { opacity: 1; transform: translateX(-440px); } 86% { opacity: 1; transform: translateX(-10px); } 87% { transform: translateX(-24px); } 88% { transform: translateX(-12px); } 96% { opacity: 1; transform: translateX(-12px); } 100% { opacity: 0; transform: translateX(-12px); } }
+@keyframes d-refused { 0%, 86% { opacity: 0; } 89%, 97% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes d-membrane { to { stroke-dashoffset: -18; } }
+html[data-motion] .dgm-wrap:not([data-in]) .dgm * { animation-play-state: paused; }

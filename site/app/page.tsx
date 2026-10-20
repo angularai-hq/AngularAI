@@ -8,6 +8,7 @@ import { RailSection } from "@/components/Section";
 import { CodeBlock } from "@/components/CodeBlock";
 import { Film } from "@/components/Film";
 import { Mark } from "@/components/Logo";
+import { KnotMark } from "@/components/Knot";
 import { RELEASES, UPDATES } from "@/lib/updates";
 import { LAYERS } from "@/lib/layers";
 import { SITE, asset } from "@/lib/site";
@@ -24,16 +25,17 @@ export default function Home() {
       <main id="main">
           <section aria-labelledby="hero-title" className="relative isolate overflow-hidden pt-[72px] text-white lg:pt-[88px]">
             <div className="mesh -z-10" aria-hidden="true">
-              <i className="b1" /><i className="b2" /><i className="b5" /><i className="b3" /><i className="b4" /><i className="b6" />
+              <div className="field"><i className="b1" /><i className="b2" /><i className="b5" /><i className="b3" /><i className="b4" /><i className="b6" /></div>
             </div>
             <div className="wrap pb-14 pt-12 lg:pb-20 lg:pt-16">
               <div className="rail">
-                <p className="pt-2 text-[14px] font-medium">Platform</p>
-                <div>
-                  <h1 id="hero-title" className="max-w-[22em] font-serif text-[29px] leading-[1.2] tracking-[-0.01em] sm:text-[34px] lg:text-[40px]">
+                <p className="rise pt-2 text-[14px] font-medium" style={{ "--d": 60 } as React.CSSProperties}>Platform</p>
+                <div className="relative">
+                  <KnotMark id="hero-knot" className="pointer-events-none absolute right-0 top-[-6px] hidden h-[150px] w-auto xl:block 2xl:h-[170px]" />
+                  <h1 id="hero-title" style={{ "--d": 120 } as React.CSSProperties} className="rise max-w-[22em] xl:max-w-[19em] font-serif text-[29px] leading-[1.2] tracking-[-0.01em] sm:text-[34px] lg:text-[40px]">
                     Angular AI brings Thameleon&rsquo;s brain-like architecture to the model you already use.
                   </h1>
-                  <LabelLink href="/platform/" className="mt-5 text-white">How it works</LabelLink>
+                  <LabelLink href="/platform/" className="rise mt-5 text-white [--d:220]">How it works</LabelLink>
                 </div>
               </div>
             </div>
@@ -44,7 +46,7 @@ export default function Home() {
             </div>
             <div className="wrap mt-5 lg:mt-6">
               <div className="snap-row -mx-[var(--gutter)] flex snap-x snap-mandatory scroll-px-[var(--gutter)] gap-4 overflow-x-auto px-[var(--gutter)] pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-6 sm:overflow-visible sm:px-0 lg:grid-cols-4 lg:gap-8">
-                {RELEASES.map((r, i) => <ReleaseCard key={r.href} r={r} eager={i < 2} first={i === 0} />)}
+                {RELEASES.map((r, i) => <ReleaseCard key={r.href} r={r} eager={i < 2} first={i === 0} i={i} />)}
               </div>
             </div>
             <div className="wrap flex justify-center pb-10 pt-8 lg:pb-14 lg:pt-12">
@@ -55,18 +57,18 @@ export default function Home() {
           <div className="rail">
             <div aria-hidden="true" />
             <div>
-              <p className="max-w-[30em] font-serif text-[24px] leading-[1.42] text-ink sm:text-[28px] lg:text-[32px]">
+              <p data-reveal="" className="max-w-[30em] font-serif text-[24px] leading-[1.42] text-ink sm:text-[28px] lg:text-[32px]">
                 Angular AI is not a lightweight tool. It is a lightweight Thameleon. It brings Thameleon&rsquo;s brain-like CLASP architecture to software, as a platform on top of any existing model. There is no custom model and no training. It is free and open source.
               </p>
-              <LabelLink href="/platform/" className="mt-6 text-ink">About the platform</LabelLink>
+              <span data-reveal="fade" className="block [--d:200]"><LabelLink href="/platform/" className="mt-6 text-ink">About the platform</LabelLink></span>
             </div>
           </div>
         </section>
 
-        <RailSection id="layers" label="The layers" className="!pt-0">
+        <RailSection id="layers" label="The layers" className="!pt-0" reveal="fade">
           <ol className="grid gap-x-12 gap-y-10 sm:grid-cols-2 xl:grid-cols-3">
             {LAYERS.map((l, i) => (
-              <li key={l.id} className="border-t border-hair pt-5">
+              <li key={l.id} data-reveal="" style={{ "--d": i * 90 } as React.CSSProperties} className="border-t border-hair pt-5">
                 <p className="date text-quiet">0{i + 1}</p>
                 <h3 className="mt-3 font-serif text-[24px] leading-tight text-ink">{l.name}</h3>
                 <p className="mt-2 text-[16px] leading-[1.6]">{l.line}</p>
@@ -83,7 +85,7 @@ export default function Home() {
 
         <RailSection id="install" label="Install">
           <div className="max-w-[760px]">
-            <CodeBlock code={SITE.install} />
+            <CodeBlock code={SITE.install} typing />
             <p className="mt-4 text-[15px]">Then wire the API you already have. The key stays in the environment.</p>
             <LabelLink href="/install/" className="mt-2 text-ink">Install guide</LabelLink>
           </div>
@@ -103,13 +105,13 @@ export default function Home() {
           </div>
         </RailSection>
 
-        <RailSection id="updates" label="Recent updates">
+        <RailSection id="updates" label="Recent updates" reveal="fade">
           <UpdateList items={UPDATES.slice(0, 5)} />
           <LabelLink href="/updates/" className="mt-4 text-ink">View all updates</LabelLink>
         </RailSection>
 
         <section aria-labelledby="join-title" className="wrap pb-20 lg:pb-28">
-          <div className="grid gap-10 border-t border-hair pt-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12 lg:pt-16">
+          <div data-reveal="" className="grid gap-10 border-t border-hair pt-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12 lg:pt-16">
             <div className="flex flex-col">
               <h2 id="join-title" className="text-[20px] font-semibold text-ink">Build Angular AI with us</h2>
               <p className="mt-3 max-w-[26em] text-[16px] leading-[1.6]">

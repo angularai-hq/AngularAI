@@ -2,7 +2,7 @@
 import { useState } from "react";
 
 /** A real code / install block: the one place monospace is used. */
-export function CodeBlock({ code, label = "terminal", copy = true }: { code: string; label?: string; copy?: boolean }) {
+export function CodeBlock({ code, label = "terminal", copy = true, typing = false }: { code: string; label?: string; copy?: boolean; typing?: boolean }) {
   const [state, setState] = useState<"idle" | "done" | "fail">("idle");
   const onCopy = async () => {
     try {
@@ -14,7 +14,10 @@ export function CodeBlock({ code, label = "terminal", copy = true }: { code: str
     setTimeout(() => setState("idle"), 2000);
   };
   return (
-    <figure className="overflow-hidden rounded-lg border border-hair bg-[#0f1016] text-[#e8e8ef]">
+    <figure
+      className={`overflow-hidden rounded-lg border border-hair bg-[#0f1016] text-[#e8e8ef] ${typing ? "type-on" : ""}`}
+      style={typing ? ({ "--n": code.length, "--type-ms": `${Math.min(2200, code.length * 24)}ms` } as React.CSSProperties) : undefined}
+    >
       <figcaption className="flex items-center justify-between border-b border-white/10 px-4 py-2 text-[12px] text-[#b9b9c6]">
         <span>{label}</span>
         {copy ? (
@@ -24,7 +27,15 @@ export function CodeBlock({ code, label = "terminal", copy = true }: { code: str
         ) : null}
       </figcaption>
       <pre className="overflow-x-auto px-4 py-4 text-[13.5px] leading-[1.65]" tabIndex={0} aria-label={`${label} code`}>
-        <code>{code}</code>
+        {typing ? (
+          <code>
+            <span className="prompt" aria-hidden="true">$ </span>
+            <span className="typed">{code}</span>
+            <span className="caret" aria-hidden="true" />
+          </code>
+        ) : (
+          <code>{code}</code>
+        )}
       </pre>
     </figure>
   );
