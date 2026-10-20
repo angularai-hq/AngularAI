@@ -8,11 +8,16 @@ import anyio
 from hypothesis import given
 from hypothesis import strategies as st
 
+from angularai.attention import STOP
 from angularai.secrets import looks_secret
 from angularai.store import init_cortex
 from tests.helpers import connected
 
-words = st.text(alphabet="abcdefghijklmnopqrstuvwxyz", min_size=3, max_size=10)
+# A stop word ("for", "the") matches nothing, so a fact made only of them is never
+# recalled. Every fact here holds a word recall can match.
+words = st.text(alphabet="abcdefghijklmnopqrstuvwxyz", min_size=3, max_size=10).filter(
+    lambda word: word not in STOP
+)
 facts = st.lists(
     st.lists(words, min_size=1, max_size=8).map(" ".join),
     min_size=1,
