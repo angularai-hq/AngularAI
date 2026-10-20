@@ -266,3 +266,16 @@ CI runs the same five on Linux and macOS, Python 3.12 and 3.13, for every pull r
 `tests/test_prop_*.py` are Hypothesis properties: the budget, secrets, the lock, the sandbox, the log, the provider layer, and cortexes that talk. `HYPOTHESIS_PROFILE=ci` runs more examples from a fixed seed, as CI does. The default is `dev`.
 
 The invariant is `tests/test_membrane.py`, and for the agent `tests/test_agent.py`. A fact from the start of a long life is in the workspace, an unrelated episode that would have fit is not, and every call stays inside the budget. The agent reads the file it asked for. The file it did not ask for is not sent.
+
+## Site
+
+The site is a Next.js static export in [`site/`](site). GitHub Pages serves it from `main:/docs`. The Python package does not include `site/`.
+
+```bash
+cd site
+pnpm install
+pnpm export:docs     # next build, then copy out/ into ../docs
+pnpm serve ../docs   # http://localhost:4321/AngularAI/
+```
+
+`export:docs` replaces everything in `docs/` except `install.sh`, `angularai.pdf`, `build_paper.py`, and `logo.png`, and writes `docs/.nojekyll`. The platform, install, and MCP pages read this README and `packages/angularai-mcp/README.md` at build time, so rebuild `docs/` after either changes.

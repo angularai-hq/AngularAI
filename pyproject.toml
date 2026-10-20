@@ -42,7 +42,7 @@ dev = [
 packages = ["angularai"]
 
 [tool.hatch.build.targets.sdist]
-exclude = ["packages"]
+exclude = ["packages", "site"]
 
 [tool.uv.workspace]
 members = ["packages/angularai-mcp"]

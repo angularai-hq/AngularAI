@@ -1,0 +1,6 @@
+:HL["/AngularAI/_next/static/chunks/3pzjngwsehw4v.css","style"]
+:HL["/AngularAI/_next/static/media/83afe278b6a6bb3c-s.p.2bn3s6zvc0dyp.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/AngularAI/_next/static/media/aaeb013c77132fba-s.p.1wh0qzzwls4_i.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+2:[["children",{"s":"__PAGE__","h":160}]]
+1:[["children",{"s":"platform","h":64,"c":"$Q2"}]]
+0:{"b":"LXg8vL3KIaElZ4-oYGdDE","t":{"t":{"s":"","h":16,"c":"$Q1"}}}
