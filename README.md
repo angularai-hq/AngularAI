@@ -141,6 +141,8 @@ angularai
 
 `angularai` in a terminal is the session. `/` opens the commands. `/clear` clears the screen. The cortex stays on disk. `angularai say` prints only the reply.
 
+The session opens on the mark for about a second, before the setup offer. A key skips it. `NO_COLOR` shows it still. `ANGULARAI_NO_BOOT=1` leaves it out.
+
 ## Work
 
 ```bash

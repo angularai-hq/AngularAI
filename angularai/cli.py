@@ -23,6 +23,7 @@ from angularai.peers import (
 )
 from angularai.pilot import pass_turn, screen
 from angularai.present import format_banner, format_locks, format_recall, format_traces
+from angularai.profiles import anything_configured
 from angularai.semantic import SemanticRecall, embedder_from_env, minimum_from_env
 from angularai.session import cortex_status, session_command
 from angularai.store import CORRUPT, Store, init_cortex, open_store
@@ -57,6 +58,8 @@ def _dispatch(args: argparse.Namespace, cortex: Path | None, name: str | None) -
         return setup_command(args)
     if command == "model":
         return model_command(args)
+    if command is None:
+        _boot(root)
     if command in {None, "say", "agent"}:
         offer_setup(root)
     if command is None:
@@ -282,6 +285,22 @@ def _open_session(store: Store) -> int:
     if sys.stdin.isatty() and sys.stdout.isatty():
         return run_tui(store, _speak)
     return _repl(store)
+
+
+def _boot(root: Path) -> None:
+    """The boot mark, before the setup offer and the session.
+
+    It plays only when a session can follow: the cortex exists, or nothing is set up
+    and the offer can make it. Imported only here so no other command pays for it.
+    """
+
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        return
+    if not (root / "cortex.json").exists() and anything_configured(os.environ):
+        return
+    from angularai.boot import run
+
+    run(__version__)
 
 
 def _repl(store: Store) -> int:

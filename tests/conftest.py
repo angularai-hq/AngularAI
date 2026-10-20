@@ -85,3 +85,10 @@ def no_first_use_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
     """A test that fakes a terminal never meets the setup offer unless it asks for it."""
 
     monkeypatch.setattr("angularai.cli.offer_setup", lambda root: None)
+
+
+@pytest.fixture(autouse=True)
+def no_boot_animation(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The boot mark never plays into a test's terminal. Its own tests pass an env."""
+
+    monkeypatch.setenv("ANGULARAI_NO_BOOT", "1")
