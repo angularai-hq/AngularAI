@@ -349,12 +349,18 @@ h1 {
 
 #membrane,
 #install,
+#mcp,
 #questions {
   scroll-margin-top: 4.5rem;
 }
 
 .command {
   width: min(52rem, 100%);
+}
+
+.mcp .lede {
+  max-width: 38rem;
+  margin: 0 0 1.4rem;
 }
 
 .command .body p {
