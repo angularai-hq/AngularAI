@@ -7,7 +7,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from angularai.budget import estimate_tokens
+from angularai.budget import PARSE_NUDGE, estimate_tokens
 from angularai.errors import ConfigError, InputDoesNotFit, SubstrateUnavailable
 from angularai.index import (
     INDEX,
@@ -211,6 +211,8 @@ def test_assemble_indexed_packs_within_budget_in_order(tmp_path: Path) -> None:
     hits = index.search(view, "notebook colour")
     workspace = assemble_indexed(view, hits, index.newest(), "notebook colour?", store.config())
     assert workspace.estimated_tokens <= 400
+    # The repair retry appends PARSE_NUDGE; a packed workspace still fits it.
+    assert estimate_tokens(workspace.system) + estimate_tokens(workspace.user + PARSE_NUDGE) <= 400
     lines = [line for line in workspace.user.split("RECENT\n")[1].split("\n") if line[:2] == "20"]
     assert lines == sorted(lines) and 0 < len(lines) < 58
     assert workspace.episodes_shown > 0 and workspace.episodes_held >= 0

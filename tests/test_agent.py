@@ -1,7 +1,11 @@
+import json
 from pathlib import Path
+
+import pytest
 
 from angularai.agent import run_agent
 from angularai.configure import add_lock
+from angularai.errors import SubstrateUnreadable
 from angularai.models import Action, Integration
 from angularai.parse import parse_integration
 from angularai.store import init_cortex, open_store
@@ -84,3 +88,10 @@ def test_the_agent_is_told_to_look_before_it_answers(tmp_path: Path) -> None:
     system = scripted.seen[0].system
     assert "You see the files only through tools, so start with list ." in system
     assert "Only a tool changes a file; the reply changes nothing." in system
+
+
+@pytest.mark.parametrize("reply", ["...", "\u2026", " . . ", ""])
+def test_the_formats_placeholder_reply_is_unreadable(reply: str) -> None:
+    with pytest.raises(SubstrateUnreadable):
+        parse_integration(json.dumps({"reply": reply, "remember": [], "supersede": []}))
+    assert parse_integration('{"reply":"Wait... 9 months."}').reply == "Wait... 9 months."

@@ -493,9 +493,9 @@ def assemble_indexed(
 ) -> Workspace:
     """Pack L2 from index hits. The same blocks, budget and refusals as assemble.
 
-    Hits are added best first while they fit, short of the repair nudge's room. Traces go under TRACES; chunks under
-    RECENT in the order they were said, each with its date. The newest pass's first
-    chunk is added for continuity when it fits.
+    Hits are added best first while they fit, leaving room for the repair nudge.
+    Traces go under TRACES; chunks under RECENT in the order they were said, each with
+    its date. The newest pass's first chunk is added for continuity when it fits.
     """
 
     text = user_text.strip()
