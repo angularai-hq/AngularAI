@@ -6,6 +6,7 @@ import pytest
 
 from angularai import run as run_loop
 from angularai.errors import InputRejected
+from angularai.models import Action, Integration
 from angularai.worklist import summary_problems, unit_text, work_left
 from tests.scripted import Scripted
 from tests.test_run import act, begin, finished
@@ -240,10 +241,11 @@ def test_a_refusal_quotes_a_window_sized_batch(tmp_path: Path) -> None:
         module(Path(state.root), f"m{n:02d}", f"Returns x plus {n}.")
     scripted = Scripted(script=(finished(), finished()))
     run_loop.advance(runs, state, store, scripted, steps=2)
-    refusal = scripted.seen[1].user
-    assert "QUOTES what 6 of them say of themselves." in refusal
-    assert "src/m00.py: Returns x plus 0." in refusal and "src/m05.py" in refusal
-    assert "src/m06.py" not in refusal
+    seen = scripted.seen[1].user
+    assert "PINNED until S.md changes" in seen
+    assert "NEXT call write with path 'S.md' and these lines as text" in seen
+    assert "- m00.py: Returns x plus 0." in seen and "- m05.py: Returns x plus 5." in seen
+    assert "m06.py" not in seen
     assert scripted.seen[1].estimated_tokens <= 1000
 
 
@@ -264,3 +266,121 @@ def test_search_hits_are_configurable(tmp_path: Path) -> None:
     assert exchange is not None and exchange.output.count("a.txt:") == 50
     with pytest.raises(InputRejected, match="Search hits"):
         begin(tmp_path / "s", search_hits=0)
+
+
+def test_the_pin_holds_until_the_summary_changes_then_the_next_batch_comes(
+    tmp_path: Path,
+) -> None:
+    runs, state, store = begin(
+        tmp_path,
+        finish_check=True,
+        finish_checks=0,
+        budget=1000,
+        summary="S.md",
+        summary_of="src/*.py",
+    )
+    root = Path(state.root)
+    names = "abcdefgh"
+    for n, letter in enumerate(names):
+        module(root, f"mod_{letter}", f"Returns x plus {n}.")
+    first = "\n".join(f"- mod_{names[n]}.py: Returns x plus {n}." for n in range(6))
+    scripted = Scripted(
+        script=(
+            finished(),
+            act("read", path="notes.txt"),
+            act("write", path="S.md", text=first),
+            finished(),
+            Integration(
+                "Adding.",
+                (),
+                (),
+                Action(
+                    "write",
+                    path="S.md",
+                    text="- mod_g.py: Returns x plus 6.\n- mod_h.py: x + 7",
+                    append=True,
+                ),
+            ),
+            finished("Listed."),
+        )
+    )
+    done = run_loop.advance(runs, state, store, scripted)
+    assert (done.status, done.note) == ("done", "Listed.")
+    assert "PINNED" in scripted.seen[1].user and "PINNED" in scripted.seen[2].user
+    assert "PINNED" not in scripted.seen[3].user
+    batch = scripted.seen[4].user
+    assert "NEXT call write with path 'S.md', append true" in batch
+    assert "- mod_g.py: Returns x plus 6." in batch and "- mod_h.py:" in batch
+    assert "PINNED" not in scripted.seen[5].user and done.pinned == ""
+    assert (
+        (root / "S.md")
+        .read_text()
+        .endswith("- mod_f.py: Returns x plus 5.\n- mod_g.py: Returns x plus 6.\n- mod_h.py: x + 7")
+    )
+
+
+def test_the_pin_keeps_whole_lines_within_the_budget() -> None:
+    from angularai.worklist import SummaryCheck
+
+    check = SummaryCheck(("p",), ("q",), tuple(f"- m{n}.py: " + "w" * 60 for n in range(15)), True)
+    pinned = run_loop.pin_text("S.md", check, 1000)
+    assert len(pinned) <= 1000 and pinned.count("\n- m") == 12
+    assert run_loop.pin_text("S.md", SummaryCheck(("p",)), 1000) == ""
+
+
+def test_a_placeholder_line_does_not_hide_a_specific_one(tmp_path: Path) -> None:
+    root = summary_root(tmp_path)
+    (root / "SUMMARY.md").write_text(
+        "- amber: [description]\n- basil: [description]\n- cedar: [description]\n"
+        "- amber.py: Returns x plus 6.\n- basil.py: times 5\n- cedar.py: adds 3\n",
+        encoding="utf-8",
+    )
+    assert summary_problems(root, "SUMMARY.md", "src/*.py") == []
+
+
+def test_write_can_append(tmp_path: Path) -> None:
+    from angularai.models import Action
+    from angularai.tools import execute
+
+    (tmp_path / "a.md").write_text("one", encoding="utf-8")
+    out = execute(tmp_path, Action("write", path="a.md", text="two\n", append=True))
+    assert out == "Appended to a.md." and (tmp_path / "a.md").read_text() == "one\ntwo\n"
+    assert (
+        execute(tmp_path, Action("write", path="b.md", text="new", append=True))
+        == "Appended to b.md."
+    )
+    assert (tmp_path / "b.md").read_text() == "new"
+    assert "exists" in execute(tmp_path, Action("write", path="a.md", text="x")).lower()
+
+
+def test_append_is_parsed_and_sent_back() -> None:
+    from angularai.parse import integration_from_calls
+    from tests.test_run import call
+
+    parsed = integration_from_calls("", [call("write", {"path": "a", "text": "t", "append": True})])
+    assert parsed.act is not None and parsed.act.append and not parsed.act.overwrite
+    assert run_loop.arguments(parsed.act) == '{"path": "a", "text": "t", "append": true}'
+    both = integration_from_calls(
+        "", [call("write", {"path": "a", "text": "t", "append": True, "overwrite": True})]
+    )
+    assert both.act is not None and "cannot both" in both.act.problem
+    bad = integration_from_calls("", [call("write", {"path": "a", "text": "t", "append": "yes"})])
+    assert bad.act is not None and "append must be" in bad.act.problem
+
+
+def test_a_python_change_that_breaks_the_syntax_is_reported(tmp_path: Path) -> None:
+    from angularai.models import Action
+    from angularai.tools import execute
+
+    path = module(tmp_path, "f", "TODO.")
+    broken = execute(
+        tmp_path, Action("edit", path="src/f.py", old='"""TODO."""', new='"""Adds one.""'), ()
+    )
+    assert broken.startswith("Edited src/f.py. SYNTAX ERROR at line 2:")
+    assert broken.endswith("The file no longer parses; fix it.")
+    fixed = execute(
+        tmp_path, Action("edit", path="src/f.py", old='"""Adds one.""', new='"""Adds one."""')
+    )
+    assert fixed == "Edited src/f.py." and "Adds one" in path.read_text()
+    assert "SYNTAX ERROR" in execute(tmp_path, Action("write", path="g.py", text="def (:\n"))
+    assert execute(tmp_path, Action("write", path="g.txt", text="def (:\n")) == "Wrote g.txt."

@@ -1,3 +1,4 @@
+import ast
 import json
 import os
 import shlex
@@ -102,7 +103,7 @@ def execute(
     elif tool == "edit":
         result = _edit(root, action.path, action.old, action.new)
     elif tool == "write":
-        result = _write(root, action.path, action.text, action.overwrite)
+        result = _write(root, action.path, action.text, action.overwrite, action.append)
     elif tool == "run":
         result = _run(root, action.command) if allow_run else _RUN_OFF
     else:
@@ -215,7 +216,7 @@ def _edit(root: Path, raw: str, old: str, new: str) -> str:
         return str(refused)
     except OSError:
         return "That file could not be written. Nothing was changed."
-    return f"Edited {path.relative_to(root)}."
+    return f"Edited {path.relative_to(root)}.{_syntax(path, changed)}"
 
 
 def _closest(text: str, old: str) -> str:
@@ -235,19 +236,44 @@ def _closest(text: str, old: str) -> str:
     return f" Line {number + 1} is close: {quoted}. Copy old exactly, spaces included."
 
 
-def _write(root: Path, raw: str, text: str, overwrite: bool) -> str:
+def _write(root: Path, raw: str, text: str, overwrite: bool, append: bool = False) -> str:
     if len(text) > _WRITE_MAX:
         return "That text is too long to write."
     path = _inside(root, raw)
     if path is None:
         return _leaves()
     try:
-        files.write_text(root, path, text, overwrite=overwrite, create=True)
+        if append and path.exists():
+            before, cut = files.read_text(root, path, _WRITE_MAX + 1)
+            if cut or len(before) + len(text) + 1 > _WRITE_MAX:
+                return "That append makes the file too large. Nothing was changed."
+            joint = "" if not before or before.endswith("\n") else "\n"
+            text = before + joint + text
+            files.write_text(root, path, text, overwrite=True, create=False)
+        else:
+            files.write_text(root, path, text, overwrite=overwrite, create=True)
     except files.Refused as refused:
         return str(refused)
     except OSError:
         return "That file could not be written."
-    return f"Wrote {path.relative_to(root)}."
+    verb = "Appended to" if append else "Wrote"
+    return f"{verb} {path.relative_to(root)}.{_syntax(path, text)}"
+
+
+def _syntax(path: Path, text: str) -> str:
+    """For a Python file just changed: its first syntax error, so the model can fix it."""
+
+    if path.suffix != ".py":
+        return ""
+    try:
+        ast.parse(text, filename=path.name)
+    except SyntaxError as exc:
+        where = f"line {exc.lineno}" if exc.lineno else "somewhere"
+        message = (exc.msg or "invalid syntax")[:120]
+        return f" SYNTAX ERROR at {where}: {message}. The file no longer parses; fix it."
+    except (ValueError, RecursionError, MemoryError):
+        return " SYNTAX ERROR: the file could not be parsed; fix it."
+    return ""
 
 
 def _run(root: Path, command: str) -> str:

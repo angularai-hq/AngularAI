@@ -119,7 +119,7 @@ _TEXT_FIELDS = {
     "command": 400,
 }
 # note is the model's own progress line, taken by every tool and never run.
-_ACT_FIELDS = frozenset({"tool", "start", "overwrite", "note", *_TEXT_FIELDS})
+_ACT_FIELDS = frozenset({"tool", "start", "overwrite", "append", "note", *_TEXT_FIELDS})
 _MAX_START = 100000
 
 
@@ -161,7 +161,12 @@ def _act(value: object) -> Action | None:
     overwrite = value.get("overwrite", False)
     if not isinstance(overwrite, bool):
         return _refused(name, "overwrite must be true or false.")
-    return Action(tool=name, start=max(start, 1), overwrite=overwrite, **texts)
+    append = value.get("append", False)
+    if not isinstance(append, bool):
+        return _refused(name, "append must be true or false.")
+    if append and overwrite:
+        return _refused(name, "append and overwrite cannot both be true.")
+    return Action(tool=name, start=max(start, 1), overwrite=overwrite, append=append, **texts)
 
 
 def _refused(tool: str, problem: str) -> Action:
@@ -183,7 +188,7 @@ def _supersede(value: object) -> tuple[str, ...]:
 def _function(
     name: str, description: str, fields: dict[str, str], required: list[str]
 ) -> dict[str, object]:
-    kinds = {"start": "integer", "overwrite": "boolean"}
+    kinds = {"start": "integer", "overwrite": "boolean", "append": "boolean"}
     if name not in ("finish", "remember"):
         fields = {**fields, "note": "Short: what is done so far and what comes next."}
     return {
@@ -228,8 +233,14 @@ TOOL_SPECS: tuple[dict[str, object], ...] = (
     ),
     _function(
         "write",
-        "Write a new file, or overwrite one when overwrite is true.",
-        {"path": "A file.", "text": "The whole content.", "overwrite": "Replace a file."},
+        "Write a new file, overwrite one when overwrite is true, or add text to the end "
+        "of one when append is true.",
+        {
+            "path": "A file.",
+            "text": "The whole content, or the lines to add.",
+            "overwrite": "Replace a file.",
+            "append": "Add text to the end of the file.",
+        },
         ["path", "text"],
     ),
     _function(

@@ -127,6 +127,9 @@ class SummaryCheck:
 
     problems: tuple[str, ...] = ()
     quotes: tuple[str, ...] = ()
+    # The same batch as summary lines, ready to add: "- name.py: what it says".
+    lines: tuple[str, ...] = ()
+    exists: bool = False
 
 
 def summary_problems(root: Path, summary: str, units: str) -> list[str]:
@@ -144,12 +147,17 @@ def summary_check(
 
     problems, pending, texts = _summary(root, summary, units)
     shown: list[str] = []
+    ready: list[str] = []
     for item in pending[:quotes]:
         text = " ".join(texts.get(item, "").split())
         if len(text) > quote_chars:
             text = text[: max(0, quote_chars - 3)] + "..."
         shown.append(f"{item.relative_to(root).as_posix()}: {text or '(no text)'}")
-    return SummaryCheck(tuple(problems), tuple(shown))
+        if text:
+            ready.append(f"- {item.name}: {text}")
+    target = tools.inside(root, summary)
+    exists = target is not None and target.is_file()
+    return SummaryCheck(tuple(problems), tuple(shown), tuple(ready), exists)
 
 
 def _summary(root: Path, summary: str, units: str) -> tuple[list[str], list[Path], dict[Path, str]]:
@@ -189,14 +197,15 @@ def _summary(root: Path, summary: str, units: str) -> tuple[list[str], list[Path
     said: dict[str, list[str]] = {}
     for item in covered:
         name = re.compile(rf"(?<![\w-]){re.escape(item.stem)}(?![\w-])")
-        line = next((line for line in lines if name.search(line)), None)
-        if line is None:
+        distinctive = sources[item] - common
+        found = [_said(name, item, line) for line in lines if name.search(line)]
+        if not found:
             missing.append(item.stem)
             continue
-        description = name.sub(" ", line.replace(item.name, " "))
-        words = _tokens(description) - _tokens(item.stem) - {"src", "py"}
+        # The best line about the file counts: a specific one added later wins over a
+        # placeholder left above it.
+        words = next((w for w in found if w and (not distinctive or w & distinctive)), found[0])
         said.setdefault(" ".join(sorted(words)), []).append(item.stem)
-        distinctive = sources[item] - common
         if not words or (distinctive and not words & distinctive):
             vague.append(item.stem)
     for stems in said.values():
@@ -217,6 +226,11 @@ def _summary(root: Path, summary: str, units: str) -> tuple[list[str], list[Path
         )
     pending = [item for item in covered if item.stem in set(missing) | set(vague)]
     return problems, pending, texts
+
+
+def _said(name: re.Pattern[str], item: Path, line: str) -> set[str]:
+    description = name.sub(" ", line.replace(item.name, " "))
+    return _tokens(description) - _tokens(item.stem) - {"src", "py"}
 
 
 def _covered(root: Path, path: Path, units: str) -> list[Path]:

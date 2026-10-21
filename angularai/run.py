@@ -40,7 +40,7 @@ from angularai.pricing import Price, Usage
 from angularai.semantic import SemanticRecall
 from angularai.store import Store
 from angularai.substrate import Metered, Substrate
-from angularai.tools import MAX_SEARCH_HITS, SEARCH_HITS, execute
+from angularai.tools import MAX_SEARCH_HITS, SEARCH_HITS, execute, inside
 from angularai.worklist import SummaryCheck, summary_check, work_left
 
 FORMAT = 1
@@ -166,6 +166,8 @@ class RunState:
     finish_refusals: int = 5
     refused: int = 0
     search_hits: int = SEARCH_HITS
+    # The next summary batch, kept in working memory until the summary file changes.
+    pinned: str = ""
     # Edit recall: the last change's own text, kept in the cortex log for recall.
     change_recall: bool = True
     last_change: str = ""
@@ -429,6 +431,8 @@ def working_memory(state: RunState) -> tuple[str, Exchange | None]:
     head = f"WORKING MEMORY\nTASK\n{state.task}\nSTEP {state.step + 1} of {state.max_steps}\n"
     if state.note:
         head += f"NOTE {state.note}\n"
+    if state.pinned:
+        head += f"PINNED until {state.summary} changes\n{state.pinned}\n"
     if state.files and state.files_view != "off":
         head += (
             _FILES_HEAD[state.files_view]
@@ -507,6 +511,8 @@ def arguments(action: Action) -> str:
         fields["start"] = action.start
     if action.tool == "write" and action.overwrite:
         fields["overwrite"] = True
+    if action.tool == "write" and action.append:
+        fields["append"] = True
     return json.dumps(fields, ensure_ascii=False)
 
 
@@ -607,6 +613,7 @@ def advance(
                 line.update(tool="finish", detail="finish refused; stalled")
             elif gate is not None and gate.refused:
                 state = _checked(state, number, note, "finish refused", gate.text, refused=True)
+                state = replace(state, pinned=gate.pinned or state.pinned)
                 line.update(tool="finish", detail="finish refused")
             elif gate is not None and not state.checked and state.checks < state.finish_checks:
                 output = finish_check(state, directory, secrets)
@@ -646,6 +653,9 @@ def advance(
                     files=_touch(state.files, result.act, output),
                     checked=state.checked and not _changed(output),
                     refused=0 if _changed(output) else state.refused,
+                    pinned=""
+                    if _changed(output) and _same(directory, _path(result.act), state.summary)
+                    else state.pinned,
                     last_change=change_text(result.act, output),
                     trail=trail,
                     recent=state.recent if result.act.problem else (*state.recent, key)[-_RECENT:],
@@ -689,7 +699,7 @@ def _touch(
 
     path = _path(action)
     read = action.tool == "read" and (output == "" or bool(_READ_LINE.match(output)))
-    changed = output.startswith(("Edited ", "Wrote "))
+    changed = output.startswith(("Edited ", "Wrote ", "Appended to "))
     if not path or not (read or changed):
         return files
     reads, changes = next(((r, c) for p, r, c in files if p == path), (0, 0))
@@ -705,6 +715,7 @@ class Gate:
     counted: bool
     refused: bool
     text: str = ""
+    pinned: str = ""
 
 
 def finish_gate(state: RunState, root: Path) -> Gate:
@@ -735,16 +746,46 @@ def finish_gate(state: RunState, root: Path) -> Gate:
         lines.append("WORK LEFT none: no " + " or ".join(state.markers) + " is left.")
     for problem in problems:
         lines.append(f"SUMMARY {problem}")
-    if problems and check.quotes:
-        lines.append(
-            f"QUOTES what {len(check.quotes)} of them say of themselves. Put each in "
-            f"{state.summary} in your own words, then finish again for the next batch:"
-        )
+    pinned = pin_text(state.summary, check, state.budget) if problems else ""
+    if pinned:
+        lines.append(f"QUOTES what {len(check.quotes)} of them say of themselves, as lines.")
+        lines.append(pinned)
+    elif problems and check.quotes:
+        lines.append(f"QUOTES what {len(check.quotes)} of them say of themselves:")
         lines.extend(check.quotes)
     if left.count and state.summary:
         lines.append(f"Write or update {state.summary} after the last of this work.")
     lines.append("Do the next part. Finish is accepted when this check finds nothing.")
-    return Gate(counted=True, refused=True, text="\n".join(lines))
+    return Gate(counted=True, refused=True, text="\n".join(lines), pinned=pinned)
+
+
+def _same(root: Path, path: str, summary: str) -> bool:
+    if not path or not summary:
+        return False
+    one, two = inside(root, path), inside(root, summary)
+    return one is not None and one == two
+
+
+def pin_text(summary: str, check: SummaryCheck, budget: int) -> str:
+    """The exact next call for a summary batch, whole lines only, at most a quarter of
+    the budget in tokens. Empty when there is nothing ready to add."""
+
+    head = (
+        f"NEXT call write with path {summary!r}, append true, and these lines as text, "
+        "then finish again for the next batch:"
+        if check.exists
+        else f"NEXT call write with path {summary!r} and these lines as text, then finish "
+        "again for the next batch:"
+    )
+    limit = max(200, budget)  # characters: about budget // 4 tokens
+    kept: list[str] = []
+    size = len(head)
+    for line in check.lines:
+        if size + len(line) + 1 > limit:
+            break
+        kept.append(line)
+        size += len(line) + 1
+    return "\n".join([head, *kept]) if kept else ""
 
 
 def quote_batch(budget: int) -> int:
@@ -775,7 +816,7 @@ def _checked(
 
 
 def _changed(output: str) -> bool:
-    return output.startswith(("Edited ", "Wrote "))
+    return output.startswith(("Edited ", "Wrote ", "Appended to "))
 
 
 def change_text(action: Action, output: str) -> str:
@@ -788,7 +829,7 @@ def change_text(action: Action, output: str) -> str:
     flat = " ".join(raw.split())
     if len(flat) > _CHANGE_CHARS:
         flat = flat[: _CHANGE_CHARS - 3] + "..."
-    verb = "EDITED" if action.tool == "edit" else "WROTE"
+    verb = "EDITED" if action.tool == "edit" else "APPENDED" if action.append else "WROTE"
     return f"{verb} {_path(action)}: {flat}"
 
 
