@@ -40,8 +40,8 @@ from angularai.pricing import Price, Usage
 from angularai.semantic import SemanticRecall
 from angularai.store import Store
 from angularai.substrate import Metered, Substrate
-from angularai.tools import execute
-from angularai.worklist import summary_problems, work_left
+from angularai.tools import MAX_SEARCH_HITS, SEARCH_HITS, execute
+from angularai.worklist import SummaryCheck, summary_check, work_left
 
 FORMAT = 1
 MAX_STEPS = 10000
@@ -165,6 +165,7 @@ class RunState:
     summary_of: str = ""
     finish_refusals: int = 5
     refused: int = 0
+    search_hits: int = SEARCH_HITS
     # Edit recall: the last change's own text, kept in the cortex log for recall.
     change_recall: bool = True
     last_change: str = ""
@@ -213,6 +214,7 @@ def start(
     summary: str = "",
     summary_of: str = "",
     finish_refusals: int = 5,
+    search_hits: int = SEARCH_HITS,
     price: Price | None = None,
     max_cost: float | None = None,
 ) -> RunState:
@@ -232,6 +234,8 @@ def start(
         raise InputRejected("The summary path and glob are at most 200 characters.")
     if summary_of and (Path(summary_of).is_absolute() or ".." in Path(summary_of).parts):
         raise InputRejected("--summary-of is a glob inside the root.")
+    if not 1 <= search_hits <= MAX_SEARCH_HITS:
+        raise InputRejected(f"Search hits must be from 1 to {MAX_SEARCH_HITS}.")
     if not 1 <= finish_refusals <= MAX_CHECKS:
         raise InputRejected(f"Finish refusals must be from 1 to {MAX_CHECKS}.")
     if not 0 <= finish_checks <= MAX_CHECKS:
@@ -261,6 +265,7 @@ def start(
         summary=summary,
         summary_of=summary_of,
         finish_refusals=finish_refusals,
+        search_hits=search_hits,
         price=None if price is None else (price.input, price.output, price.cached),
         max_cost=max_cost,
         change_recall=change_recall,
@@ -617,7 +622,9 @@ def advance(
                 if result.act.tool == "remember":
                     output = "Kept."
                 else:
-                    output = execute(directory, result.act, secrets, state.allow_run)
+                    output = execute(
+                        directory, result.act, secrets, state.allow_run, state.search_hits
+                    )
                 trail = (*state.trail, _path(result.act))[-_TRAIL:]
                 key = call_key(result.act)
                 if not result.act.problem and key in state.recent:
@@ -706,7 +713,12 @@ def finish_gate(state: RunState, root: Path) -> Gate:
     Without either, the finish check decides, at most finish_checks times."""
 
     left = work_left(root, state.markers)
-    problems = summary_problems(root, state.summary, state.summary_of) if state.summary else []
+    check = (
+        summary_check(root, state.summary, state.summary_of, quotes=quote_batch(state.budget))
+        if state.summary
+        else SummaryCheck()
+    )
+    problems = check.problems
     counted = left.count is not None or bool(state.summary)
     if not counted or (not left.count and not problems):
         return Gate(counted=counted, refused=False)
@@ -723,10 +735,23 @@ def finish_gate(state: RunState, root: Path) -> Gate:
         lines.append("WORK LEFT none: no " + " or ".join(state.markers) + " is left.")
     for problem in problems:
         lines.append(f"SUMMARY {problem}")
+    if problems and check.quotes:
+        lines.append(
+            f"QUOTES what {len(check.quotes)} of them say of themselves. Put each in "
+            f"{state.summary} in your own words, then finish again for the next batch:"
+        )
+        lines.extend(check.quotes)
     if left.count and state.summary:
         lines.append(f"Write or update {state.summary} after the last of this work.")
     lines.append("Do the next part. Finish is accepted when this check finds nothing.")
     return Gate(counted=True, refused=True, text="\n".join(lines))
+
+
+def quote_batch(budget: int) -> int:
+    """How many files a refusal quotes: about one per 150 tokens of budget, 3 to 15,
+    so a batch of 120-character quotes stays well inside the window's half."""
+
+    return max(3, min(15, budget // 150))
 
 
 def _checked(

@@ -190,9 +190,77 @@ def test_the_cli_takes_the_gate_options(
     monkeypatch.setattr("angularai.cli.build_substrate", lambda config, environ: scripted)
     cortex = ["--cortex", str(tmp_path / "cortex")]
     assert main([*cortex, "init"]) == 0
-    args = ["--root", str(work), "--markers", "HACK", "--finish-refusals", "2", "--summary"]
+    args = [
+        "--root",
+        str(work),
+        "--markers",
+        "HACK",
+        "--finish-refusals",
+        "2",
+        "--search-hits",
+        "40",
+        "--summary",
+    ]
     assert main([*cortex, "run", *args, "S.md", "--summary-of", "*.py", "Fix it."]) == 0
     run_id = capsys.readouterr().err.split("run   ")[1].split()[0]
     state = json.loads((tmp_path / "home" / "runs" / run_id / "state.json").read_text())
     assert state["status"] == "stalled" and state["markers"] == ["HACK"]
+    assert state["search_hits"] == 40
     assert main([*cortex, "run", "--root", str(work), "--summary-of", "*.py", "x"]) == 1
+
+
+def test_the_check_quotes_a_batch_of_what_the_summary_misses(tmp_path: Path) -> None:
+    from angularai.worklist import summary_check
+
+    root = summary_root(tmp_path)
+    module(root, "dune", "Returns x plus 4. " + "Long. " * 40)
+    none = summary_check(root, "SUMMARY.md", "src/*.py", quotes=2)
+    assert none.quotes == (
+        "src/amber.py: Returns x plus 6.",
+        "src/basil.py: Returns x multiplied by 5.",
+    )
+    (root / "SUMMARY.md").write_text(
+        "- amber: adds 6\n- basil: [description]\n- cedar: x + 3\n", encoding="utf-8"
+    )
+    check = summary_check(root, "SUMMARY.md", "src/*.py", quotes=5, quote_chars=40)
+    assert check.problems[0] == "SUMMARY.md does not list 1 of 4: dune"
+    assert check.quotes == (
+        "src/basil.py: Returns x multiplied by 5.",
+        "src/dune.py: Returns x plus 4. Long. Long. Long. L...",
+    )
+    assert summary_check(root, "SUMMARY.md", "src/*.py").quotes == ()
+
+
+def test_a_refusal_quotes_a_window_sized_batch(tmp_path: Path) -> None:
+    assert [run_loop.quote_batch(b) for b in (1000, 2000, 4000)] == [6, 13, 15]
+    runs, state, store = begin(
+        tmp_path, finish_check=True, budget=1000, summary="S.md", summary_of="src/*.py"
+    )
+    for n in range(20):
+        module(Path(state.root), f"m{n:02d}", f"Returns x plus {n}.")
+    scripted = Scripted(script=(finished(), finished()))
+    run_loop.advance(runs, state, store, scripted, steps=2)
+    refusal = scripted.seen[1].user
+    assert "QUOTES what 6 of them say of themselves." in refusal
+    assert "src/m00.py: Returns x plus 0." in refusal and "src/m05.py" in refusal
+    assert "src/m06.py" not in refusal
+    assert scripted.seen[1].estimated_tokens <= 1000
+
+
+def test_search_hits_are_configurable(tmp_path: Path) -> None:
+    from angularai.models import Action
+    from angularai.tools import execute
+
+    (tmp_path / "a.txt").write_text("".join(f"hit {n}\n" for n in range(80)), encoding="utf-8")
+    search = Action("search", query="hit", path=".")
+    assert len(execute(tmp_path, search).splitlines()) == 30
+    assert len(execute(tmp_path, search, search_hits=60).splitlines()) == 60
+    assert len(execute(tmp_path, search, search_hits=999).splitlines()) == 80
+    runs, state, store = begin(tmp_path / "r", search_hits=50)
+    (Path(state.root) / "a.txt").write_text("hit\n" * 70, encoding="utf-8")
+    scripted = Scripted(script=(act("search", query="hit", path="."), finished()))
+    run_loop.advance(runs, state, store, scripted)
+    exchange = scripted.seen[1].exchange
+    assert exchange is not None and exchange.output.count("a.txt:") == 50
+    with pytest.raises(InputRejected, match="Search hits"):
+        begin(tmp_path / "s", search_hits=0)

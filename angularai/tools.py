@@ -21,7 +21,9 @@ _READ_BYTES = 4 * 1024 * 1024
 _SEARCH_FILE = 1024 * 1024
 _SEARCH_BYTES = 16 * 1024 * 1024
 _WALK_MAX = 20000
-_SEARCH_MAX = 30
+SEARCH_HITS = 30
+MAX_SEARCH_HITS = 200
+_HIT_CHARS = 64
 _WRITE_MAX = 80_000
 _RESULT = 1600
 _RUN_TIMEOUT = 20
@@ -78,8 +80,12 @@ def execute(
     action: Action,
     secrets: tuple[str, ...] = (),
     allow_run: bool = False,
+    search_hits: int = SEARCH_HITS,
 ) -> str:
-    """Run one tool inside root. A refusal is a sentence, not an exception."""
+    """Run one tool inside root. A refusal is a sentence, not an exception.
+
+    search returns at most search_hits lines, and its result may grow to hold them;
+    the run's window clips any result to its share of the budget."""
 
     root = root.resolve()
     tool = action.tool
@@ -90,7 +96,9 @@ def execute(
     elif tool == "read":
         result = _read(root, action.path, action.start)
     elif tool == "search":
-        result = _search(root, action.path or ".", action.query)
+        hits = max(1, min(search_hits, MAX_SEARCH_HITS))
+        result = _search(root, action.path or ".", action.query, hits)
+        return _clip(redact(result, secrets), max(_RESULT, hits * _HIT_CHARS))
     elif tool == "edit":
         result = _edit(root, action.path, action.old, action.new)
     elif tool == "write":
@@ -154,7 +162,7 @@ def _read(root: Path, raw: str, start: int) -> str:
     return _clip(body, _READ_CHARS)
 
 
-def _search(root: Path, raw: str, query: str) -> str:
+def _search(root: Path, raw: str, query: str, limit: int = SEARCH_HITS) -> str:
     if not query.strip():
         return "Give a query."
     path = _inside(root, raw)
@@ -166,7 +174,7 @@ def _search(root: Path, raw: str, query: str) -> str:
     budget = _SEARCH_BYTES
     found = [path] if not path.is_dir() else _files(root, path)
     for file in found:
-        if len(hits) >= _SEARCH_MAX or budget <= 0:
+        if len(hits) >= limit or budget <= 0:
             break
         try:
             # _files and _inside checked that the target, links followed, stays inside.
@@ -179,7 +187,7 @@ def _search(root: Path, raw: str, query: str) -> str:
                 continue
             relative = file.relative_to(root)
             hits.append(f"{relative}:{number}:{line.strip()[:160]}")
-            if len(hits) >= _SEARCH_MAX:
+            if len(hits) >= limit:
                 break
     return "\n".join(hits) if hits else "No matches."
 

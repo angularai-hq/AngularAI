@@ -120,27 +120,56 @@ def unit_text(source: str, suffix: str) -> str:
     return " ".join(kept[:_UNIT_LINES])
 
 
+@dataclass(frozen=True)
+class SummaryCheck:
+    """Why the summary is not yet the run's last word, and, for a batch of the files it
+    leaves out or is vague about, what each file says of itself."""
+
+    problems: tuple[str, ...] = ()
+    quotes: tuple[str, ...] = ()
+
+
 def summary_problems(root: Path, summary: str, units: str) -> list[str]:
     """Why the summary is not yet the run's last word. Empty when it is."""
 
+    return list(summary_check(root, summary, units).problems)
+
+
+def summary_check(
+    root: Path, summary: str, units: str, quotes: int = 0, quote_chars: int = 120
+) -> SummaryCheck:
+    """The summary weighed against the files it covers. quotes: how many of the files
+    it misses or is vague about to quote, in file order, each clipped to quote_chars:
+    the docstring of a Python file, else its first lines."""
+
+    problems, pending, texts = _summary(root, summary, units)
+    shown: list[str] = []
+    for item in pending[:quotes]:
+        text = " ".join(texts.get(item, "").split())
+        if len(text) > quote_chars:
+            text = text[: max(0, quote_chars - 3)] + "..."
+        shown.append(f"{item.relative_to(root).as_posix()}: {text or '(no text)'}")
+    return SummaryCheck(tuple(problems), tuple(shown))
+
+
+def _summary(root: Path, summary: str, units: str) -> tuple[list[str], list[Path], dict[Path, str]]:
+
     path = tools.inside(root, summary)
     if path is None:
-        return [f"{summary} is outside the root."]
+        return [f"{summary} is outside the root."], [], {}
     if not path.is_file():
-        return [f"{summary} is not written. Write it last."]
+        return [f"{summary} is not written. Write it last."], *_all(root, path, units)
     try:
         text, cut = files.read_text(root, path, _FILE_BYTES)
     except (files.Refused, OSError, RuntimeError, ValueError):
-        return [f"{summary} could not be read as text."]
+        return [f"{summary} could not be read as text."], [], {}
     if cut:
-        return [f"{summary} is too large."]
+        return [f"{summary} is too large."], [], {}
     if not units:
-        return []
-    covered = sorted(
-        item for item in root.glob(units) if item.is_file() and item.resolve() != path.resolve()
-    )
+        return [], [], {}
+    covered = _covered(root, path, units)
     if not covered or len(covered) > _UNITS:
-        return [] if not covered else [f"{units} matches more than {_UNITS} files."]
+        return ([] if not covered else [f"{units} matches more than {_UNITS} files."]), [], {}
     problems: list[str] = []
     written = path.stat().st_mtime
     newer = [item for item in covered if item.stat().st_mtime > written]
@@ -151,13 +180,8 @@ def summary_problems(root: Path, summary: str, units: str) -> list[str]:
             f"({names}). Write or update it last."
         )
     lines = text.splitlines()
-    sources: dict[Path, set[str]] = {}
-    for item in covered:
-        try:
-            body, _ = files.read_text(root, item.resolve(), _FILE_BYTES)
-        except (files.Refused, OSError, RuntimeError, ValueError):
-            body = ""
-        sources[item] = _tokens(unit_text(body, item.suffix)) - _tokens(item.stem)
+    texts = _texts(root, covered)
+    sources = {item: _tokens(texts[item]) - _tokens(item.stem) for item in covered}
     frequency: Counter[str] = Counter(token for words in sources.values() for token in words)
     common = {token for token, count in frequency.items() if count * 2 > len(covered)}
     missing: list[str] = []
@@ -191,7 +215,34 @@ def summary_problems(root: Path, summary: str, units: str) -> list[str]:
             + (" ..." if len(vague) > _SHOWN else "")
             + ". Say what each one does, as its own text says."
         )
-    return problems
+    pending = [item for item in covered if item.stem in set(missing) | set(vague)]
+    return problems, pending, texts
+
+
+def _covered(root: Path, path: Path, units: str) -> list[Path]:
+    if not units:
+        return []
+    return sorted(
+        item for item in root.glob(units) if item.is_file() and item.resolve() != path.resolve()
+    )
+
+
+def _texts(root: Path, covered: list[Path]) -> dict[Path, str]:
+    texts: dict[Path, str] = {}
+    for item in covered:
+        try:
+            body, _ = files.read_text(root, item.resolve(), _FILE_BYTES)
+        except (files.Refused, OSError, RuntimeError, ValueError):
+            body = ""
+        texts[item] = unit_text(body, item.suffix)
+    return texts
+
+
+def _all(root: Path, path: Path, units: str) -> tuple[list[Path], dict[Path, str]]:
+    """Every covered file is pending when there is no summary yet."""
+
+    covered = _covered(root, path, units)[:_UNITS]
+    return covered, _texts(root, covered)
 
 
 def _by(covered: list[Path], stem: str) -> Path:

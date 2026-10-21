@@ -214,6 +214,7 @@ def _run(root: Path, args: argparse.Namespace) -> int:
             summary=args.summary or "",
             summary_of=args.summary_of or "",
             finish_refusals=args.finish_refusals,
+            search_hits=args.search_hits,
         )
     store = _open(root)
     substrate = build_substrate(store.config(), os.environ)
@@ -572,6 +573,12 @@ def _parser() -> argparse.ArgumentParser:
         type=int,
         default=5,
         help="Refused finishes in a row, with no change between, that stall the run.",
+    )
+    run.add_argument(
+        "--search-hits",
+        type=int,
+        default=30,
+        help="Lines a search returns at most (1-200); the window still clips the result.",
     )
     run.add_argument(
         "--max-cost",

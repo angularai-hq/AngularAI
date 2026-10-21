@@ -202,6 +202,10 @@ file's own docstring or first lines say that most of the others do not. When the
 count is off (`--markers ""`) or the root is too large to count and there is no
 summary, `--finish-checks N` caps the checks as before. `--finish-refusals N`
 (default 5) refused finishes in a row with no change between them stall the run.
+A refusal for the summary quotes a batch of the files it misses or is vague about,
+each one's docstring or first lines, about one per 150 tokens of budget (3 to 15), so
+the model can fill the summary in batches without holding every file in its window.
+`--search-hits N` (default 30, at most 200) sets how many lines a search returns.
 
 A paid model can carry a spend limit. `--max-cost 8` reads the usage block of
 every response, prices it per 1M tokens (input, cached input, output), and stops
