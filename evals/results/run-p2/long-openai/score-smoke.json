@@ -1,0 +1,45 @@
+{
+ "run": "r_248675ab99fb",
+ "status": "budget",
+ "steps": 6,
+ "max_steps": 6,
+ "budget": 2000,
+ "contiguous": true,
+ "files": 46,
+ "files_done": 0,
+ "files_correct": 0,
+ "summary": false,
+ "summary_listed": 0,
+ "summary_correct": 0,
+ "tokens": {
+  "mean": 517,
+  "median": 514.5,
+  "max": 738,
+  "over_budget": 0
+ },
+ "tokens_by_third": [
+  370,
+  531,
+  651
+ ],
+ "seconds": {
+  "mean": 1.9,
+  "total_min": 0.2
+ },
+ "seconds_by_third": [
+  2.1,
+  1.6,
+  2.1
+ ],
+ "correct_rate_first_half_done": 0.0,
+ "correct_rate_second_half_done": 0.0,
+ "steps_per_file_by_half": [
+  null,
+  null
+ ],
+ "tools": {
+  "list": 3,
+  "read": 3
+ },
+ "finish_checks": 0
+}
