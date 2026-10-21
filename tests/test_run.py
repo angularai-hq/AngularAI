@@ -619,3 +619,22 @@ def test_finish_checks_are_limited(tmp_path: Path, limit: int, ends: int) -> Non
     assert (done.status, done.step, done.checks) == ("done", ends, limit)
     with pytest.raises(InputRejected, match="Finish checks"):
         run_loop.start(runs, task=TASK, root=Path(state.root), cortex=store.root, finish_checks=21)
+
+
+def test_a_long_edit_is_clipped_so_the_next_step_fits(tmp_path: Path) -> None:
+    runs, state, store = begin(tmp_path, budget=1000)
+    big = "\n".join(f"- `src/m{n}.py`: Returns x plus {n}." for n in range(120))
+    scripted = Scripted(script=(act("edit", path="notes.txt", old=big, new=big), finished()))
+    done = run_loop.advance(runs, state, store, scripted)
+    assert done.status == "done" and done.step == 2
+    second = scripted.seen[1]
+    assert second.estimated_tokens <= second.budget
+    assert second.exchange is not None and len(second.exchange.arguments) < len(big)
+    assert json.loads(second.exchange.arguments)["path"] == "notes.txt"
+
+
+def test_clipped_arguments_stay_json() -> None:
+    clipped = json.loads(run_loop.clip_arguments('{"path": "a.md", "new": "' + "x" * 50 + '"}', 10))
+    assert clipped == {"path": "a.md", "new": "xxxxxxx..."}
+    assert json.loads(run_loop.clip_arguments("not json", 3)) == {"clipped": "not"}
+    assert json.loads(run_loop.clip_arguments("[1]", 2)) == {"clipped": "[1"}

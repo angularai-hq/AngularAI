@@ -187,3 +187,15 @@ def test_the_cli_prices_a_known_model_and_takes_a_limit(
     assert main(["run", "--resume", run_id, "--max-cost", "0.03", "--steps", "2"]) == 0
     err = capsys.readouterr().err
     assert "Paused at step 2." in err and "cost  $0.0040" in err
+
+
+def test_a_step_that_fails_before_any_call_costs_nothing(tmp_path: Path) -> None:
+    runs, state, store = begin(tmp_path, price=PRICE, max_cost=1.0)
+
+    class Refused(Billed):
+        def integrate(self, workspace: Workspace) -> Integration:
+            raise ServerError("The model server failed.", 503)
+
+    with pytest.raises(ServerError):
+        run_loop.advance(runs, state, store, Refused())
+    assert run_loop.load(runs, state.id).cost == 0.0

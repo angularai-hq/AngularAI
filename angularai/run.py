@@ -48,6 +48,9 @@ DEFAULT_STEPS = 50
 DEFAULT_BUDGET = 4000
 MAX_CHECKS = 20
 MAX_COST = 1000.0
+# Character limits tried, in turn, on the last call's text fields when they alone
+# outgrow the window.
+_ARG_CLIPS = (1200, 600, 300, 120, 40)
 # A step's input is estimated at 4 characters a token, and tool schemas ride along:
 # the worst case before any step is priced is twice the budget plus this, and the
 # longest native completion.
@@ -282,14 +285,16 @@ def next_step(state: RunState) -> float:
     return worst_step(state)
 
 
-def _charge(state: RunState, spent: Usage) -> tuple[RunState, float]:
-    """The state after a step billed spent. A metered step that reports no usage is
-    charged the worst case, so a provider that omits usage cannot slip past the limit."""
+def _charge(state: RunState, spent: Usage, *, called: bool = True) -> tuple[RunState, float]:
+    """The state after a step billed spent. A step that called the model and reports
+    no usage is charged the worst case, so a provider that omits usage cannot slip
+    past the limit. A failed step may have failed before any call; it pays only what
+    was reported."""
 
     price = _price(state)
     if price is None:
         return state, 0.0
-    cost = price.cost(spent) if spent != Usage() else worst_step(state)
+    cost = price.cost(spent) if spent != Usage() or not called else worst_step(state)
     billed = (
         state.billed[0] + spent.input,
         state.billed[1] + spent.cached,
@@ -405,10 +410,12 @@ def working_memory(state: RunState) -> tuple[str, Exchange | None]:
     cap = max(32, state.budget // 2)
     output = state.last_output
     native = state.native and bool(state.last_tool)
+    args = state.last_args
+    clip: tuple[int, ...] = _ARG_CLIPS
     while True:
         if native:
             text = head
-            exchange: Exchange | None = Exchange(state.last_tool, state.last_args, output)
+            exchange: Exchange | None = Exchange(state.last_tool, args, output)
             size = estimate_tokens(text) + (0 if exchange is None else exchange.tokens())
         else:
             marker = fence(output)
@@ -418,10 +425,38 @@ def working_memory(state: RunState) -> tuple[str, Exchange | None]:
             )
             exchange = None
             size = estimate_tokens(text)
-        if size < cap or not output:
+        if size < cap:
+            return text, exchange
+        if not output:
+            # A long edit or write can outgrow the window by its arguments alone:
+            # clip their text, then drop the exchange for the inline record.
+            if native and clip:
+                args, clip = clip_arguments(state.last_args, clip[0]), clip[1:]
+                continue
+            if native:
+                native = False
+                continue
             return text, exchange
         cut = max(16, (size - cap + 1) * 4)
         output = output[: max(0, len(output) - cut - 3)] + "..." if len(output) > cut else ""
+
+
+def clip_arguments(raw: str, chars: int) -> str:
+    """Tool-call arguments with every text field clipped to chars, still valid JSON."""
+
+    try:
+        fields = json.loads(raw)
+    except ValueError:
+        return json.dumps({"clipped": raw[:chars]})
+    if not isinstance(fields, dict):
+        return json.dumps({"clipped": raw[:chars]})
+    clipped = {
+        key: value[: max(0, chars - 3)] + "..."
+        if isinstance(value, str) and len(value) > chars
+        else value
+        for key, value in fields.items()
+    }
+    return json.dumps(clipped, ensure_ascii=False)
 
 
 def arguments(action: Action) -> str:
@@ -511,7 +546,8 @@ def advance(
             except AngularAIError as exc:
                 # The step did not happen. The run stays resumable at the same step.
                 if meter is not None:
-                    state, _ = _charge(state, cast(Metered, meter).billed() - before)
+                    spent = cast(Metered, meter).billed() - before
+                    state, _ = _charge(state, spent, called=False)
                 save(runs, replace(state, error=str(exc)[:400], updated=_now()))
                 raise
             step_cost = 0.0
