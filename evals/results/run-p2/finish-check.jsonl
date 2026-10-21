@@ -1,0 +1,4 @@
+{"files_done": 7, "files_correct": 7, "files": 8, "summary": true, "summary_listed": 5, "summary_correct": 5, "steps": 40, "status": "budget", "tokens_mean": 1047, "seconds_mean": 9.2, "view": "guard", "rep": "t0"}
+{"files_done": 8, "files_correct": 8, "files": 8, "summary": true, "summary_listed": 8, "summary_correct": 8, "steps": 29, "status": "done", "tokens_mean": 1036, "seconds_mean": 9.3, "view": "guard", "rep": "s1"}
+{"files_done": 8, "files_correct": 8, "files": 8, "summary": true, "summary_listed": 8, "summary_correct": 8, "steps": 40, "status": "done", "tokens_mean": 1087, "seconds_mean": 10.2, "view": "guard", "rep": "s2"}
+{"files_done": 7, "files_correct": 7, "files": 8, "summary": true, "summary_listed": 5, "summary_correct": 5, "steps": 40, "status": "budget", "tokens_mean": 999, "seconds_mean": 9.4, "view": "guard", "rep": "s3"}
