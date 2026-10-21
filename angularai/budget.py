@@ -5,6 +5,11 @@ from unicodedata import east_asian_width
 _OUTSIDE_ASCII = re.compile(r"[^\x00-\x7f]+")
 
 
+# Sent once more after a reply that is not a cortex reply. A workspace packed to the
+# budget leaves room for it, so the repair retry is never skipped for want of room.
+PARSE_NUDGE = "\n\nReturn only the JSON object."
+
+
 def estimate_tokens(text: str) -> int:
     """Membrane size, counted in quarter tokens and rounded up.
 

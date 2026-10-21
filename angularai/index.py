@@ -31,7 +31,7 @@ from typing import Literal
 
 from angularai.assemble import SYSTEM, focus, lock_block, speakers
 from angularai.attention import score, tokens
-from angularai.budget import estimate_tokens
+from angularai.budget import PARSE_NUDGE, estimate_tokens
 from angularai.errors import AngularAIError, ConfigError, InputDoesNotFit
 from angularai.models import Config, CortexView, Episode, PassRecord, Trace, Workspace
 from angularai.secrets import redact
@@ -493,7 +493,7 @@ def assemble_indexed(
 ) -> Workspace:
     """Pack L2 from index hits. The same blocks, budget and refusals as assemble.
 
-    Hits are added best first while they fit. Traces go under TRACES; chunks under
+    Hits are added best first while they fit, short of the repair nudge's room. Traces go under TRACES; chunks under
     RECENT in the order they were said, each with its date. The newest pass's first
     chunk is added for continuity when it fits.
     """
@@ -514,7 +514,8 @@ def assemble_indexed(
             "Shorten it, or raise the budget with angularai budget."
         )
     traces = {trace.id: trace for trace in view.current_traces()}
-    room = config.workspace_budget - base
+    # Packed to the budget, it still leaves room for the one repair retry.
+    room = config.workspace_budget - base - estimate_tokens(PARSE_NUDGE)
     chosen: list[Chunk] = []
     seen: set[int] = set()
     candidates = [hit.chunk for hit in hits]

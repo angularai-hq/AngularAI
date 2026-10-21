@@ -13,6 +13,8 @@ _MAX_TRACE = 240
 _MAX_REMEMBER = 24
 _MAX_SUPERSEDE = 8
 
+# The format's own placeholder, copied back instead of an answer.
+_PLACEHOLDER = re.compile(r"^[.\u2026\s]*$")
 _UNREADABLE = "The model did not return a cortex reply. Nothing was written."
 
 
@@ -43,7 +45,7 @@ def _reply(value: object) -> str:
     if not isinstance(value, str):
         raise SubstrateUnreadable(_UNREADABLE)
     reply = value.strip()
-    if not reply:
+    if _PLACEHOLDER.match(reply):
         raise SubstrateUnreadable(_UNREADABLE)
     if len(reply) > _MAX_REPLY:
         return reply[:_MAX_REPLY]
