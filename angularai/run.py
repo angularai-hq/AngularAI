@@ -26,7 +26,7 @@ from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from secrets import token_hex
-from typing import Literal
+from typing import Literal, cast
 
 from angularai.agent import detail, fence
 from angularai.budget import estimate_tokens
@@ -36,9 +36,10 @@ from angularai.index import CortexIndex
 from angularai.models import Action, Exchange
 from angularai.names import cortex_home
 from angularai.pilot import pass_turn
+from angularai.pricing import Price, Usage
 from angularai.semantic import SemanticRecall
 from angularai.store import Store
-from angularai.substrate import Substrate
+from angularai.substrate import Metered, Substrate
 from angularai.tools import execute
 
 FORMAT = 1
@@ -46,6 +47,13 @@ MAX_STEPS = 10000
 DEFAULT_STEPS = 50
 DEFAULT_BUDGET = 4000
 MAX_CHECKS = 20
+MAX_COST = 1000.0
+# A step's input is estimated at 4 characters a token, and tool schemas ride along:
+# the worst case before any step is priced is twice the budget plus this, and the
+# longest native completion.
+_SCHEMA_TOKENS = 1500
+_MAX_OUTPUT = 2048
+_COST_MARGIN = 1.25
 MIN_BUDGET = 1000
 MAX_BUDGET = 32000
 _TASK_CHARS = 1200
@@ -73,8 +81,8 @@ _FILES_HEAD: dict[FilesView, str] = {
     "off": "",
 }
 
-Status = Literal["running", "done", "budget", "held", "stalled"]
-STATUSES: tuple[Status, ...] = ("running", "done", "budget", "held", "stalled")
+Status = Literal["running", "done", "budget", "held", "stalled", "cost"]
+STATUSES: tuple[Status, ...] = ("running", "done", "budget", "held", "stalled", "cost")
 # Steps in a row with no tool call before the run stops as stalled.
 IDLE_LIMIT = 3
 
@@ -146,6 +154,13 @@ class RunState:
     # Edit recall: the last change's own text, kept in the cortex log for recall.
     change_recall: bool = True
     last_change: str = ""
+    # The spend guard: dollars per 1M tokens (input, output, cached), the limit, what
+    # was billed (input, cached, output tokens) and what it cost.
+    price: tuple[float, float, float] | None = None
+    max_cost: float | None = None
+    cost: float = 0.0
+    step_cost_max: float = 0.0
+    billed: tuple[int, int, int] = (0, 0, 0)
     error: str = ""
     format: int = FORMAT
 
@@ -180,11 +195,17 @@ def start(
     finish_check: bool = True,
     change_recall: bool = True,
     finish_checks: int = 2,
+    price: Price | None = None,
+    max_cost: float | None = None,
 ) -> RunState:
     if not MIN_BUDGET <= budget <= MAX_BUDGET:
         raise InputRejected(f"The run budget must be from {MIN_BUDGET} to {MAX_BUDGET}.")
     if not 1 <= max_steps <= MAX_STEPS:
         raise InputRejected(f"Steps must be from 1 to {MAX_STEPS}.")
+    if max_cost is not None and not 0 < max_cost <= MAX_COST:
+        raise InputRejected(f"The cost limit must be above 0 and at most {MAX_COST} dollars.")
+    if max_cost is not None and price is None:
+        raise InputRejected("A cost limit needs a price: a known model, or --price.")
     if not 0 <= finish_checks <= MAX_CHECKS:
         raise InputRejected(f"Finish checks must be from 0 to {MAX_CHECKS}.")
     directory = root.expanduser().resolve()
@@ -208,6 +229,8 @@ def start(
         files_view=files_view,
         finish_check=finish_check,
         finish_checks=finish_checks,
+        price=None if price is None else (price.input, price.output, price.cached),
+        max_cost=max_cost,
         change_recall=change_recall,
         created=now,
         updated=now,
@@ -227,11 +250,67 @@ def raise_limit(state: RunState, max_steps: int) -> RunState:
     return replace(state, max_steps=max_steps, status=status)
 
 
+def raise_cost(state: RunState, max_cost: float) -> RunState:
+    """A new cost limit for a resumed run. A run stopped for cost runs again."""
+
+    if state.price is None:
+        raise InputRejected("This run has no price; a cost limit cannot be set on resume.")
+    if not state.cost < max_cost <= MAX_COST:
+        raise InputRejected(f"The new cost limit must be above {state.cost:.4f} dollars.")
+    status: Status = "running" if state.status == "cost" else state.status
+    return replace(state, max_cost=max_cost, status=status)
+
+
+def _price(state: RunState) -> Price | None:
+    return None if state.price is None else Price(*state.price)
+
+
+def worst_step(state: RunState) -> float:
+    """A step's cost before any is known: every token the window and schemas can take."""
+
+    price = _price(state)
+    if price is None:
+        return 0.0
+    return price.cost(Usage(input=state.budget * 2 + _SCHEMA_TOKENS, output=_MAX_OUTPUT))
+
+
+def next_step(state: RunState) -> float:
+    """What the next step may cost: the dearest so far with a margin, else the worst case."""
+
+    if state.step_cost_max > 0:
+        return state.step_cost_max * _COST_MARGIN
+    return worst_step(state)
+
+
+def _charge(state: RunState, spent: Usage) -> tuple[RunState, float]:
+    """The state after a step billed spent. A metered step that reports no usage is
+    charged the worst case, so a provider that omits usage cannot slip past the limit."""
+
+    price = _price(state)
+    if price is None:
+        return state, 0.0
+    cost = price.cost(spent) if spent != Usage() else worst_step(state)
+    billed = (
+        state.billed[0] + spent.input,
+        state.billed[1] + spent.cached,
+        state.billed[2] + spent.output,
+    )
+    state = replace(
+        state,
+        cost=state.cost + cost,
+        step_cost_max=max(state.step_cost_max, cost),
+        billed=billed,
+    )
+    return state, cost
+
+
 def save(runs: Path, state: RunState) -> None:
     payload = asdict(state)
     payload["history"] = list(state.history)
     payload["recent"] = list(state.recent)
     payload["files"] = [list(item) for item in state.files]
+    payload["price"] = None if state.price is None else list(state.price)
+    payload["billed"] = list(state.billed)
     payload["trail"] = list(state.trail)
     text = json.dumps(payload, ensure_ascii=False, indent=1) + "\n"
     atomic_write(runs / state.id / "state.json", text.encode("utf-8"))
@@ -254,6 +333,14 @@ def load(runs: Path, run_id: str) -> RunState:
             for path, reads, changes in payload.get("files", ())
         )
         payload["trail"] = tuple(str(item) for item in payload.get("trail", ()))
+        raw_price = payload.get("price")
+        payload["price"] = None if raw_price is None else tuple(float(v) for v in raw_price)
+        if payload["price"] is not None and len(payload["price"]) != 3:
+            raise ValueError("price")
+        billed = tuple(int(v) for v in payload.get("billed", (0, 0, 0)))
+        if len(billed) != 3:
+            raise ValueError("billed")
+        payload["billed"] = billed
         state = RunState(**payload)
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise InputRejected(f"The state of run {run_id} is unreadable.") from exc
@@ -391,11 +478,21 @@ def advance(
         raise InputRejected("Steps must be at least 1.")
     if state.status != "running":
         raise InputRejected(f"Run {state.id} is {state.status}. There is nothing to resume.")
+    meter = substrate if callable(getattr(substrate, "billed", None)) else None
+    if state.max_cost is not None and meter is None:
+        raise InputRejected("This substrate reports no usage, so a cost limit cannot hold.")
     with holding(runs, state.id):
         limit = state.max_steps if steps is None else min(state.max_steps, state.step + steps)
         directory = Path(state.root)
         while state.step < limit:
+            if state.max_cost is not None and state.cost + next_step(state) > state.max_cost:
+                state = replace(state, status="cost", updated=_now())
+                save(runs, state)
+                if progress is not None:
+                    progress(f"Stopped before step {state.step + 1}: ${state.cost:.4f} spent.")
+                break
             began = time.monotonic()
+            before = Usage() if meter is None else cast(Metered, meter).billed()
             text, exchange = working_memory(state)
             try:
                 result = pass_turn(
@@ -413,8 +510,13 @@ def advance(
                 )
             except AngularAIError as exc:
                 # The step did not happen. The run stays resumable at the same step.
+                if meter is not None:
+                    state, _ = _charge(state, cast(Metered, meter).billed() - before)
                 save(runs, replace(state, error=str(exc)[:400], updated=_now()))
                 raise
+            step_cost = 0.0
+            if meter is not None:
+                state, step_cost = _charge(state, cast(Metered, meter).billed() - before)
             note = " ".join(result.reply.split())[:_NOTE_CHARS]
             number = state.step + 1
             line: dict[str, object] = {
@@ -489,6 +591,9 @@ def advance(
                     line["change"] = state.last_change
             state = replace(state, tokens=state.tokens + result.used, updated=_now(), error="")
             line["seconds"] = round(time.monotonic() - began, 2)
+            if state.price is not None:
+                line["cost"] = round(step_cost, 6)
+                line["total_cost"] = round(state.cost, 6)
             if state.status == "running" and state.step >= state.max_steps:
                 state = replace(state, status="budget")
             line["status"] = state.status

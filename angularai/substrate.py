@@ -31,6 +31,7 @@ from angularai.errors import (
 from angularai.http import http_json
 from angularai.models import Config, Integration, SubstrateKind, Workspace
 from angularai.parse import TOOL_SPECS, integration_from_calls, parse_integration
+from angularai.pricing import Usage, usage_of
 from angularai.profiles import KEY_ENVS, Vault, effective_config, saved_key
 from angularai.provider import (
     Clock,
@@ -47,6 +48,12 @@ Answer = tuple[int, bytes] | tuple[int, bytes, Mapping[str, str]]
 Transport = Callable[[str, dict[str, str], Mapping[str, object], float], Answer]
 _PARSE_NUDGE = "\n\nReturn only the JSON object."
 _NO_REPLY = "returned no reply. Nothing was written."
+
+
+class Metered(Protocol):
+    """A substrate that reports what it was billed."""
+
+    def billed(self) -> Usage: ...
 
 
 class Substrate(Protocol):
@@ -84,6 +91,8 @@ class _Caller:
         self.clock = clock or Clock()
         self.provider = provider
         self.secret = secret
+        # Every token billed through this caller, failed passes included.
+        self.usage = Usage()
 
     def deadline(self) -> Deadline:
         return Deadline(self.policy.deadline, self.clock)
@@ -116,7 +125,9 @@ class _Caller:
                         provider=self.provider,
                         now=self.clock.wall(),
                     )
-                return _object(body, self.secret, self.provider)
+                parsed = _object(body, self.secret, self.provider)
+                self.usage = self.usage + usage_of(parsed)
+                return parsed
             except SubstrateError as exc:
                 if attempt >= self.policy.attempts:
                     raise
@@ -155,6 +166,11 @@ class OpenAICompatible:
         self._caller = _Caller(
             transport=transport, policy=policy, clock=clock, provider=provider, secret=api_key
         )
+
+    def billed(self) -> Usage:
+        """Every token this substrate has been billed for."""
+
+        return self._caller.usage
 
     def integrate(self, workspace: Workspace) -> Integration:
         deadline = self._caller.deadline()
@@ -264,6 +280,11 @@ class Anthropic:
         self._caller = _Caller(
             transport=transport, policy=policy, clock=clock, provider=provider, secret=api_key
         )
+
+    def billed(self) -> Usage:
+        """Every token this substrate has been billed for."""
+
+        return self._caller.usage
 
     def integrate(self, workspace: Workspace) -> Integration:
         deadline = self._caller.deadline()

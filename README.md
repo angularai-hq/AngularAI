@@ -192,6 +192,16 @@ The tools are `angularai agent`'s, with its limits, in one directory, `run` off 
 
 State is in `~/.angularai/runs/<id>/` (or under `ANGULARAI_HOME`): `state.json`, rewritten atomically after every step, and `steps.jsonl`, one line a step with its tokens and seconds. A step counts once it is written. A run killed mid-step repeats that step on resume. `--steps N` pauses after N steps. `--resume ID --max-steps N` raises the limit, and a run out of steps runs again. One process holds a run at a time. A run ends `done`, `budget`, `held`, or `stalled`. The log keeps each step's tool and target and, with change recall, the text the model wrote, never tool output. Working memory's one-line summaries live only in `state.json`.
 
+A paid model can carry a spend limit. `--max-cost 8` reads the usage block of
+every response, prices it per 1M tokens (input, cached input, output), and stops
+the run cleanly, with status `cost`, before a step that could take the total over
+the limit. The next step is priced at 1.25 times the dearest step so far, or, before
+any step, at the most the window and a full completion could use. Prices for
+gpt-5.4-mini, gpt-5.4-nano and gpt-5.4 are built in (OpenAI standard tier,
+2026-10-21); give any other model's with `--price IN,OUT,CACHED`. Each step's cost
+and the running total go into `steps.jsonl`. `--resume ID --max-cost N` raises the
+limit.
+
 ## Talk
 
 ```bash

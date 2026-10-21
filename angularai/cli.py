@@ -25,6 +25,7 @@ from angularai.peers import (
 )
 from angularai.pilot import pass_turn, screen
 from angularai.present import format_banner, format_locks, format_recall, format_traces
+from angularai.pricing import parse_price, price_for
 from angularai.profiles import anything_configured
 from angularai.semantic import SemanticRecall, embedder_from_env, minimum_from_env
 from angularai.session import cortex_status, session_command
@@ -182,11 +183,18 @@ def _run(root: Path, args: argparse.Namespace) -> int:
         state = run_loop.load(runs, args.resume)
         if args.max_steps is not None:
             state = run_loop.raise_limit(state, args.max_steps)
+        if args.max_cost is not None:
+            state = run_loop.raise_cost(state, args.max_cost)
         root = Path(state.cortex)
     else:
         if not args.task:
             raise InputRejected("Say what the run should do, or --resume a run.")
         directory = Path.cwd() if args.root is None else args.root
+        try:
+            model = _open(root).config().model or ""
+            price = parse_price(args.price) if args.price else price_for(model)
+        except ValueError as exc:
+            raise InputRejected(str(exc)) from exc
         state = run_loop.start(
             runs,
             task=screen(" ".join(args.task), secrets),
@@ -200,6 +208,8 @@ def _run(root: Path, args: argparse.Namespace) -> int:
             finish_check=args.finish_check == "on",
             finish_checks=args.finish_checks,
             change_recall=args.change_recall == "on",
+            price=price,
+            max_cost=args.max_cost,
         )
     store = _open(root)
     substrate = build_substrate(store.config(), os.environ)
@@ -221,6 +231,13 @@ def _run(root: Path, args: argparse.Namespace) -> int:
         print(f"Paused at step {state.step}. angularai run --resume {state.id}", file=sys.stderr)
     elif state.status == "budget":
         print("The step budget is spent.", file=sys.stderr)
+    elif state.status == "cost":
+        print(
+            f"The cost limit stops the run. angularai run --resume {state.id} --max-cost N",
+            file=sys.stderr,
+        )
+    if state.price is not None:
+        print(f"cost  ${state.cost:.4f}", file=sys.stderr)
     print(state.note)
     return 0
 
@@ -527,6 +544,18 @@ def _parser() -> argparse.ArgumentParser:
         choices=("on", "off"),
         default="on",
         help="On: the first finish gets a check of the task and TODOs; a second ends.",
+    )
+    run.add_argument(
+        "--max-cost",
+        type=float,
+        default=None,
+        help="Stop before a step that could take the run's spend over this many dollars.",
+    )
+    run.add_argument(
+        "--price",
+        default=None,
+        metavar="IN,OUT,CACHED",
+        help="Dollars per 1M tokens, for a model AngularAI has no price for.",
     )
     run.add_argument(
         "--finish-checks",
