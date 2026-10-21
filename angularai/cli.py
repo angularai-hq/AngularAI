@@ -198,6 +198,7 @@ def _run(root: Path, args: argparse.Namespace) -> int:
             native=not args.json_acts,
             files_view=args.files,
             finish_check=args.finish_check == "on",
+            finish_checks=args.finish_checks,
             change_recall=args.change_recall == "on",
         )
     store = _open(root)
@@ -526,6 +527,12 @@ def _parser() -> argparse.ArgumentParser:
         choices=("on", "off"),
         default="on",
         help="On: the first finish gets a check of the task and TODOs; a second ends.",
+    )
+    run.add_argument(
+        "--finish-checks",
+        type=int,
+        default=2,
+        help="At most this many finish checks a run; a finish after them ends it.",
     )
     run.add_argument(
         "--change-recall",

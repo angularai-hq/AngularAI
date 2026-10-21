@@ -45,6 +45,7 @@ FORMAT = 1
 MAX_STEPS = 10000
 DEFAULT_STEPS = 50
 DEFAULT_BUDGET = 4000
+MAX_CHECKS = 20
 MIN_BUDGET = 1000
 MAX_BUDGET = 32000
 _TASK_CHARS = 1200
@@ -139,6 +140,9 @@ class RunState:
     # The finish guard: on, the first finish gets a check and a second one ends.
     finish_check: bool = True
     checked: bool = False
+    # At most this many checks a run; a finish after them ends it.
+    finish_checks: int = 2
+    checks: int = 0
     # Edit recall: the last change's own text, kept in the cortex log for recall.
     change_recall: bool = True
     last_change: str = ""
@@ -175,11 +179,14 @@ def start(
     files_view: FilesView = "list",
     finish_check: bool = True,
     change_recall: bool = True,
+    finish_checks: int = 2,
 ) -> RunState:
     if not MIN_BUDGET <= budget <= MAX_BUDGET:
         raise InputRejected(f"The run budget must be from {MIN_BUDGET} to {MAX_BUDGET}.")
     if not 1 <= max_steps <= MAX_STEPS:
         raise InputRejected(f"Steps must be from 1 to {MAX_STEPS}.")
+    if not 0 <= finish_checks <= MAX_CHECKS:
+        raise InputRejected(f"Finish checks must be from 0 to {MAX_CHECKS}.")
     directory = root.expanduser().resolve()
     if not directory.is_dir():
         raise InputRejected("The run root is not a directory.")
@@ -200,6 +207,7 @@ def start(
         native=native,
         files_view=files_view,
         finish_check=finish_check,
+        finish_checks=finish_checks,
         change_recall=change_recall,
         created=now,
         updated=now,
@@ -415,13 +423,20 @@ def advance(
                 "used": result.used,
                 "budget": result.budget,
             }
-            if result.act is None and not result.held and state.finish_check and not state.checked:
+            if (
+                result.act is None
+                and not result.held
+                and state.finish_check
+                and not state.checked
+                and state.checks < state.finish_checks
+            ):
                 output = finish_check(state, directory, secrets)
                 state = replace(
                     state,
                     step=number,
                     note=note,
                     checked=True,
+                    checks=state.checks + 1,
                     idle=0,
                     last_done="finish check",
                     last_tool="",

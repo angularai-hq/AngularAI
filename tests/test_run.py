@@ -608,3 +608,14 @@ def test_a_change_is_kept_for_recall_and_never_its_output(tmp_path: Path) -> Non
     run_loop.advance(runs2, state2, store2, scripted2, steps=2)
     kept = (store2.root / "passes.jsonl").read_text()
     assert "EDITED" not in kept
+
+
+@pytest.mark.parametrize(("limit", "ends"), [(0, 2), (1, 4), (2, 6)])
+def test_finish_checks_are_limited(tmp_path: Path, limit: int, ends: int) -> None:
+    runs, state, store = begin(tmp_path, native=False, finish_check=True, finish_checks=limit)
+    work = act("edit", path="notes.txt", old="green", new="green")
+    script = (work, finished(), work, finished(), work, finished(), work, finished())
+    done = run_loop.advance(runs, state, store, Scripted(script=script))
+    assert (done.status, done.step, done.checks) == ("done", ends, limit)
+    with pytest.raises(InputRejected, match="Finish checks"):
+        run_loop.start(runs, task=TASK, root=Path(state.root), cortex=store.root, finish_checks=21)
