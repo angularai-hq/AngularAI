@@ -556,7 +556,8 @@ def test_an_unknown_files_view_is_unreadable(tmp_path: Path) -> None:
 
 
 def test_the_first_finish_gets_a_check_and_the_second_ends(tmp_path: Path) -> None:
-    runs, state, store = begin(tmp_path, native=False, finish_check=True)
+    # No markers to count: the finish check alone decides.
+    runs, state, store = begin(tmp_path, native=False, finish_check=True, markers=())
     (Path(state.root) / "a.py").write_text("x = 1  # TODO: name it\n", encoding="utf-8")
     scripted = Scripted(
         script=(

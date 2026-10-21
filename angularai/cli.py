@@ -210,6 +210,10 @@ def _run(root: Path, args: argparse.Namespace) -> int:
             change_recall=args.change_recall == "on",
             price=price,
             max_cost=args.max_cost,
+            markers=tuple(m.strip() for m in args.markers.split(",") if m.strip()),
+            summary=args.summary or "",
+            summary_of=args.summary_of or "",
+            finish_refusals=args.finish_refusals,
         )
     store = _open(root)
     substrate = build_substrate(store.config(), os.environ)
@@ -544,6 +548,30 @@ def _parser() -> argparse.ArgumentParser:
         choices=("on", "off"),
         default="on",
         help="On: the first finish gets a check of the task and TODOs; a second ends.",
+    )
+    run.add_argument(
+        "--markers",
+        default=",".join(run_loop.DEFAULT_MARKERS),
+        help="Comma-separated words that mark work left (default TODO,FIXME). A finish is "
+        "refused while any line under the root holds one. Empty turns the count off.",
+    )
+    run.add_argument(
+        "--summary",
+        default=None,
+        metavar="PATH",
+        help="A file the run must end with: finish is refused until it is written last.",
+    )
+    run.add_argument(
+        "--summary-of",
+        default=None,
+        metavar="GLOB",
+        help="The files --summary must list, each with a specific description.",
+    )
+    run.add_argument(
+        "--finish-refusals",
+        type=int,
+        default=5,
+        help="Refused finishes in a row, with no change between, that stall the run.",
     )
     run.add_argument(
         "--max-cost",

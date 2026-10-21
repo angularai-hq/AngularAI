@@ -393,6 +393,24 @@ class _Capture:
 def _files(root: Path, path: Path) -> list[Path]:
     """Regular files under path, links not followed, at most 400, after at most 20000 entries."""
 
+    return _walk(root, path, 400)[0]
+
+
+def every_file(root: Path, limit: int) -> list[Path] | None:
+    """Every regular file under root that a tool may read, or None when there are more
+    than limit or the walk was cut short: a count over them would be a guess."""
+
+    found, whole = _walk(root, root, limit + 1)
+    return found if whole and len(found) <= limit else None
+
+
+def inside(root: Path, raw: str) -> Path | None:
+    """raw resolved inside root, as the tools resolve it, else None."""
+
+    return _inside(root, raw)
+
+
+def _walk(root: Path, path: Path, limit: int) -> tuple[list[Path], bool]:
     found: list[Path] = []
     seen = 0
     for folder, dirs, names in os.walk(path, followlinks=False):
@@ -404,11 +422,11 @@ def _files(root: Path, path: Path) -> list[Path]:
                 continue
             if item.is_file():
                 found.append(item)
-            if len(found) >= 400:
-                return found
+            if len(found) >= limit:
+                return found, False
         if seen >= _WALK_MAX:
-            break
-    return found
+            return found, False
+    return found, True
 
 
 def _stays(root: Path, item: Path) -> bool:

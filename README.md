@@ -192,6 +192,17 @@ The tools are `angularai agent`'s, with its limits, in one directory, `run` off 
 
 State is in `~/.angularai/runs/<id>/` (or under `ANGULARAI_HOME`): `state.json`, rewritten atomically after every step, and `steps.jsonl`, one line a step with its tokens and seconds. A step counts once it is written. A run killed mid-step repeats that step on resume. `--steps N` pauses after N steps. `--resume ID --max-steps N` raises the limit, and a run out of steps runs again. One process holds a run at a time. A run ends `done`, `budget`, `held`, or `stalled`. The log keeps each step's tool and target and, with change recall, the text the model wrote, never tool output. Working memory's one-line summaries live only in `state.json`.
 
+A finish is weighed against the work left. Every line under the root that holds a
+marker (`--markers TODO,FIXME` by default) is counted, in full, and a finish is
+refused while the count is above zero; the refusal lists the first lines and the
+files that hold them. `--summary SUMMARY.md --summary-of "src/*.py"` adds a final
+artifact: the finish is refused until the summary exists, was written after every
+file it covers, names each, and says something specific about each, something the
+file's own docstring or first lines say that most of the others do not. When the
+count is off (`--markers ""`) or the root is too large to count and there is no
+summary, `--finish-checks N` caps the checks as before. `--finish-refusals N`
+(default 5) refused finishes in a row with no change between them stall the run.
+
 A paid model can carry a spend limit. `--max-cost 8` reads the usage block of
 every response, prices it per 1M tokens (input, cached input, output), and stops
 the run cleanly, with status `cost`, before a step that could take the total over

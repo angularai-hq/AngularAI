@@ -41,12 +41,15 @@ from angularai.semantic import SemanticRecall
 from angularai.store import Store
 from angularai.substrate import Metered, Substrate
 from angularai.tools import execute
+from angularai.worklist import summary_problems, work_left
 
 FORMAT = 1
 MAX_STEPS = 10000
 DEFAULT_STEPS = 50
 DEFAULT_BUDGET = 4000
 MAX_CHECKS = 20
+MAX_MARKERS = 8
+DEFAULT_MARKERS = ("TODO", "FIXME")
 MAX_COST = 1000.0
 # Character limits tried, in turn, on the last call's text fields when they alone
 # outgrow the window.
@@ -154,6 +157,14 @@ class RunState:
     # At most this many checks a run; a finish after them ends it.
     finish_checks: int = 2
     checks: int = 0
+    # The finish gate. With markers to count, or a summary to check, finish is accepted
+    # only when no marker is left and the summary is complete; finish_refusals refused
+    # finishes in a row, with no change between them, stall the run.
+    markers: tuple[str, ...] = DEFAULT_MARKERS
+    summary: str = ""
+    summary_of: str = ""
+    finish_refusals: int = 5
+    refused: int = 0
     # Edit recall: the last change's own text, kept in the cortex log for recall.
     change_recall: bool = True
     last_change: str = ""
@@ -198,6 +209,10 @@ def start(
     finish_check: bool = True,
     change_recall: bool = True,
     finish_checks: int = 2,
+    markers: tuple[str, ...] = DEFAULT_MARKERS,
+    summary: str = "",
+    summary_of: str = "",
+    finish_refusals: int = 5,
     price: Price | None = None,
     max_cost: float | None = None,
 ) -> RunState:
@@ -209,6 +224,16 @@ def start(
         raise InputRejected(f"The cost limit must be above 0 and at most {MAX_COST} dollars.")
     if max_cost is not None and price is None:
         raise InputRejected("A cost limit needs a price: a known model, or --price.")
+    if len(markers) > MAX_MARKERS or any(not 0 < len(m) <= 40 or m != m.strip() for m in markers):
+        raise InputRejected(f"Markers are 1 to {MAX_MARKERS} words of at most 40 characters.")
+    if summary_of and not summary:
+        raise InputRejected("--summary-of needs --summary.")
+    if len(summary) > 200 or len(summary_of) > 200:
+        raise InputRejected("The summary path and glob are at most 200 characters.")
+    if summary_of and (Path(summary_of).is_absolute() or ".." in Path(summary_of).parts):
+        raise InputRejected("--summary-of is a glob inside the root.")
+    if not 1 <= finish_refusals <= MAX_CHECKS:
+        raise InputRejected(f"Finish refusals must be from 1 to {MAX_CHECKS}.")
     if not 0 <= finish_checks <= MAX_CHECKS:
         raise InputRejected(f"Finish checks must be from 0 to {MAX_CHECKS}.")
     directory = root.expanduser().resolve()
@@ -232,6 +257,10 @@ def start(
         files_view=files_view,
         finish_check=finish_check,
         finish_checks=finish_checks,
+        markers=tuple(markers),
+        summary=summary,
+        summary_of=summary_of,
+        finish_refusals=finish_refusals,
         price=None if price is None else (price.input, price.output, price.cached),
         max_cost=max_cost,
         change_recall=change_recall,
@@ -317,6 +346,7 @@ def save(runs: Path, state: RunState) -> None:
     payload["price"] = None if state.price is None else list(state.price)
     payload["billed"] = list(state.billed)
     payload["trail"] = list(state.trail)
+    payload["markers"] = list(state.markers)
     text = json.dumps(payload, ensure_ascii=False, indent=1) + "\n"
     atomic_write(runs / state.id / "state.json", text.encode("utf-8"))
 
@@ -338,6 +368,7 @@ def load(runs: Path, run_id: str) -> RunState:
             for path, reads, changes in payload.get("files", ())
         )
         payload["trail"] = tuple(str(item) for item in payload.get("trail", ()))
+        payload["markers"] = tuple(str(item) for item in payload.get("markers", DEFAULT_MARKERS))
         raw_price = payload.get("price")
         payload["price"] = None if raw_price is None else tuple(float(v) for v in raw_price)
         if payload["price"] is not None and len(payload["price"]) != 3:
@@ -561,28 +592,20 @@ def advance(
                 "used": result.used,
                 "budget": result.budget,
             }
-            if (
-                result.act is None
-                and not result.held
-                and state.finish_check
-                and not state.checked
-                and state.checks < state.finish_checks
-            ):
+            gate = (
+                finish_gate(state, directory)
+                if result.act is None and not result.held and state.finish_check
+                else None
+            )
+            if gate is not None and gate.refused and state.refused + 1 >= state.finish_refusals:
+                state = replace(state, step=number, status="stalled", note=gate.text[:_NOTE_CHARS])
+                line.update(tool="finish", detail="finish refused; stalled")
+            elif gate is not None and gate.refused:
+                state = _checked(state, number, note, "finish refused", gate.text, refused=True)
+                line.update(tool="finish", detail="finish refused")
+            elif gate is not None and not state.checked and state.checks < state.finish_checks:
                 output = finish_check(state, directory, secrets)
-                state = replace(
-                    state,
-                    step=number,
-                    note=note,
-                    checked=True,
-                    checks=state.checks + 1,
-                    idle=0,
-                    last_done="finish check",
-                    last_tool="",
-                    last_args="",
-                    last_change="",
-                    last_output=output[:_OUTPUT_KEEP],
-                    history=(*state.history, _summary(number, "finish check", output))[-_HISTORY:],
-                )
+                state = _checked(state, number, note, "finish check", output, refused=False)
                 line.update(tool="finish", detail="finish check")
             elif result.held or result.act is None:
                 status: Status = "held" if result.held else "done"
@@ -615,6 +638,7 @@ def advance(
                     ),
                     files=_touch(state.files, result.act, output),
                     checked=state.checked and not _changed(output),
+                    refused=0 if _changed(output) else state.refused,
                     last_change=change_text(result.act, output),
                     trail=trail,
                     recent=state.recent if result.act.problem else (*state.recent, key)[-_RECENT:],
@@ -666,6 +690,65 @@ def _touch(
     return (*kept, (path, reads + int(read), changes + int(changed)))[-_FILES:]
 
 
+@dataclass(frozen=True)
+class Gate:
+    """A finish weighed against the work left. counted: a count or a summary decides;
+    refused: it found work left; text: what the model is told."""
+
+    counted: bool
+    refused: bool
+    text: str = ""
+
+
+def finish_gate(state: RunState, root: Path) -> Gate:
+    """Whether a finish is accepted. With markers that can be counted, or a summary to
+    check, a finish is refused while a marker is left or the summary falls short.
+    Without either, the finish check decides, at most finish_checks times."""
+
+    left = work_left(root, state.markers)
+    problems = summary_problems(root, state.summary, state.summary_of) if state.summary else []
+    counted = left.count is not None or bool(state.summary)
+    if not counted or (not left.count and not problems):
+        return Gate(counted=counted, refused=False)
+    lines = ["FINISH REFUSED. The run has not ended.", f"TASK {state.task}"]
+    if left.count:
+        lines.append(
+            f"WORK LEFT {left.count} lines in {len(left.files)} files hold "
+            + " or ".join(state.markers)
+            + ":"
+        )
+        lines.extend(left.lines)
+        lines.append("FILES " + ", ".join(left.files[:_FILES]))
+    elif left.count == 0:
+        lines.append("WORK LEFT none: no " + " or ".join(state.markers) + " is left.")
+    for problem in problems:
+        lines.append(f"SUMMARY {problem}")
+    if left.count and state.summary:
+        lines.append(f"Write or update {state.summary} after the last of this work.")
+    lines.append("Do the next part. Finish is accepted when this check finds nothing.")
+    return Gate(counted=True, refused=True, text="\n".join(lines))
+
+
+def _checked(
+    state: RunState, number: int, note: str, done: str, output: str, *, refused: bool
+) -> RunState:
+    return replace(
+        state,
+        step=number,
+        note=note,
+        checked=True,
+        checks=state.checks + (0 if refused else 1),
+        refused=state.refused + 1 if refused else state.refused,
+        idle=0,
+        last_done=done,
+        last_tool="",
+        last_args="",
+        last_change="",
+        last_output=output[:_OUTPUT_KEEP],
+        history=(*state.history, _summary(number, done, output))[-_HISTORY:],
+    )
+
+
 def _changed(output: str) -> bool:
     return output.startswith(("Edited ", "Wrote "))
 
@@ -684,28 +767,26 @@ def change_text(action: Action, output: str) -> str:
     return f"{verb} {_path(action)}: {flat}"
 
 
-_MARKERS = ("TODO", "FIXME")
-
-
 def finish_check(state: RunState, root: Path, secrets: tuple[str, ...]) -> str:
-    """What the first finish gets: the task, the files changed, and the TODO and FIXME
-    lines a plain search finds. A second finish ends the run."""
+    """What a finish the gate let through gets, while checks remain: the task, the
+    files changed, and the marker lines, counted in full. A finish after it ends the
+    run when nothing has changed."""
 
+    del secrets  # the count reads through the same sandbox as the tools
     changed = [path for path, _, changes in state.files if changes]
-    found: list[str] = []
-    for marker in _MARKERS:
-        hits = execute(root, Action("search", query=marker, path="."), secrets)
-        found.extend(line for line in hits.splitlines() if line.count(":") >= 2)
+    left = work_left(root, state.markers or DEFAULT_MARKERS, shown=_MARKER_LINES)
     lines = [
         "FINISH CHECK. The run has not ended.",
         f"TASK {state.task}",
         "CHANGED " + (", ".join(changed[-_FILES:]) if changed else "nothing"),
     ]
-    if found:
-        lines.append(f"MARKERS {len(found)} lines still hold TODO or FIXME:")
-        lines.extend(found[:_MARKER_LINES])
-    else:
+    if left.count:
+        lines.append(f"MARKERS {left.count} lines still hold TODO or FIXME:")
+        lines.extend(left.lines)
+    elif left.count == 0:
         lines.append("MARKERS none found.")
+    else:
+        lines.append("MARKERS the root is too large to count.")
     lines.append("If every part of the task is done, call finish again. Else do the next part.")
     return "\n".join(lines)
 
