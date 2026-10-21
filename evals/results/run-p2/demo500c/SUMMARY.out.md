@@ -1,0 +1,132 @@
+# Module Summary
+
+- amber_badger.py: Return x increased by 9.
+- amber_cedar.py: Return x increased by 8.
+- amber_delta.py: Return x multiplied by 3.
+- amber_ember.py: Return x increased by 3.
+- amber_falcon.py: Return x multiplied by 5.
+- amber_garnet.py: Return x increased by 5.
+- amber_harbor.py: Return x increased by 6.
+- amber_iris.py: Return x multiplied by 3.
+- amber_juniper.py: Return x increased by 9.
+- amber_kestrel.py: Return x increased by 7.
+- amber_lagoon.py: Return x multiplied by 9.
+- amber_maple.py: Return x multiplied by 5.
+- amber_nectar.py: Return x increased by 4.
+- amber_onyx.py: Return x increased by 7.
+- amber_pebble.py: Return x increased by 9.
+- brisk_badger.py: Return x multiplied by 3.
+- brisk_cedar.py: Return x multiplied by 4.
+- brisk_delta.py: Return x increased by 9.
+- brisk_ember.py: Return x multiplied by 9.
+- brisk_falcon.py: Return x increased by 8.
+- brisk_garnet.py: Return x multiplied by 9.
+- brisk_harbor.py: Return x increased by 6.
+- brisk_iris.py: Return x multiplied by 9.
+- brisk_juniper.py: Return x increased by 6.
+- brisk_kestrel.py: Return x increased by 7.
+- brisk_lagoon.py: Return x multiplied by 3.
+- brisk_maple.py: Return x increased by 6.
+- brisk_nectar.py: Return x increased by 4.
+- brisk_onyx.py: Return x increased by 8.
+- brisk_pebble.py: Return x multiplied by 7.
+- calm_badger.py: Return x increased by 2.
+- calm_cedar.py: Return x multiplied by 2.
+- calm_delta.py: Return x multiplied by 2.
+- calm_ember.py: Return x multiplied by 8.
+- calm_falcon.py: Multiply x by 9.
+- calm_garnet.py: Multiply x by 5.
+- calm_harbor.py: Return x plus 8.
+- calm_iris.py: Return x plus 9.
+- calm_juniper.py: Return x increased by 4.
+- calm_kestrel.py: Return x increased by 2.
+- calm_lagoon.py: Multiply x by 4.
+- calm_maple.py: Multiply x by 9.
+- calm_nectar.py: Multiply x by 7.
+- calm_onyx.py: Return x plus 8.
+- calm_pebble.py: Multiply x by 6.
+- dusky_badger.py: Return x increased by 2.
+- dusky_cedar.py: Add 9 to x and return the result.
+- dusky_delta.py: Doubles the input value.
+- dusky_ember.py: Double the input value.
+- dusky_falcon.py: Return x increased by 7.
+- dusky_garnet.py: Return x plus 6.
+- dusky_harbor.py: Return x plus 2.
+- dusky_iris.py: Return x multiplied by 9.
+- dusky_juniper.py: Add 9 to x and return the result.
+- dusky_kestrel.py: Return x multiplied by 5.
+- dusky_lagoon.py: Return x plus 2.
+- dusky_maple.py: Add 3 to x and return the result.
+- dusky_nectar.py: Return x doubled.
+- dusky_onyx.py: Add 9 to x and return the result.
+- dusky_pebble.py: Multiply x by 7.
+- eager_badger.py: Multiply x by 5.
+- eager_cedar.py: Return x multiplied by 8.
+- eager_delta.py: Multiply x by 6.
+- eager_ember.py: Return x plus 7.
+- eager_falcon.py: Multiply x by 5.
+- eager_garnet.py: Add 4 to x and return the result.
+- eager_harbor.py: Multiply x by 9.
+- eager_iris.py: Return x increased by 8.
+- eager_juniper.py: Add 2 to x.
+- eager_kestrel.py: Add 4 to x.
+- eager_lagoon.py: Add 9 to x.
+- eager_maple.py: Return x multiplied by 8.
+- eager_nectar.py: Return x plus 5.
+- eager_onyx.py: Multiply x by 8 and return the result.
+- eager_pebble.py: Return x plus 9.
+- fallow_badger.py: Add 7 to x.
+- fallow_cedar.py: Return x increased by 7.
+- fallow_delta.py: Multiply x by 7 and return the result.
+- fallow_ember.py: Multiply x by 8.
+- fallow_falcon.py: Double x and return the result.
+- fallow_garnet.py: Add 3 to x and return the result.
+- fallow_harbor.py: Return x plus 4.
+- fallow_iris.py: Add 4 to x and return the result.
+- fallow_juniper.py: Triple the input value.
+- fallow_kestrel.py: Double the input value.
+- fallow_lagoon.py: Double the input value.
+- fallow_maple.py: Return x multiplied by 6.
+- fallow_nectar.py: Add 8 to x.
+- fallow_onyx.py: Return x multiplied by 3.
+- fallow_pebble.py: Return x increased by 2.
+- gentle_badger.py: Return x plus 5.
+- gentle_cedar.py: Return the input increased by 3.
+- gentle_delta.py: Multiply x by 4.
+- gentle_ember.py: Multiply x by 7.
+- gentle_falcon.py: Double the input value.
+- gentle_garnet.py: Multiply x by 3.
+- gentle_harbor.py: Add 9 to x and return the result.
+- gentle_iris.py: Add 7 to x and return the result.
+- gentle_juniper.py: Return seven times x.
+- gentle_kestrel.py: Add 7 to x and return the result.
+- gentle_lagoon.py: Multiply x by 7 and return the result.
+- gentle_maple.py: Return x multiplied by 7.
+- gentle_nectar.py: Return x plus 9.
+- gentle_onyx.py: Return x multiplied by 2.
+- gentle_pebble.py: Multiply x by 7.
+- hollow_badger.py: Multiply x by 7.
+- hollow_cedar.py: Add 7 to x and return the result.
+- hollow_delta.py: Add 3 to x and return the result.
+- hollow_ember.py: Multiply x by 4.
+- hollow_falcon.py: Add 6 to x and return the result.
+- hollow_garnet.py: Multiply x by 2.
+- hollow_harbor.py: Multiply x by 4.
+- hollow_iris.py: Multiply x by 3.
+- hollow_juniper.py: Add seven to x.
+- hollow_kestrel.py: Multiply x by 6.
+- hollow_lagoon.py: Multiply x by 9.
+- hollow_maple.py: Add 5 to x.
+- hollow_nectar.py: Return x plus 6.
+- hollow_onyx.py: Return x increased by 7.
+- hollow_pebble.py: Multiply x by 8.
+- ivory_badger.py: Multiply x by 6.
+- ivory_cedar.py: Return x plus 6.
+- ivory_delta.py: Multiply x by 8.
+- ivory_ember.py: Add 7 to x and return the result.
+- ivory_falcon.py: Return the input increased by six.
+- ivory_garnet.py: Add 4 to x.
+- ivory_harbor.py: Multiply x by 9.
+- ivory_iris.py: Add 9 to x and return the result.
+- ivory_juniper.py: Add 4 to x.
+- ivory_kestrel.py: Add 9 to x and return the result.
