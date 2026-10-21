@@ -1,0 +1,602 @@
+{
+ "amber_badger": {
+  "op": "+",
+  "k": 9
+ },
+ "amber_cedar": {
+  "op": "+",
+  "k": 8
+ },
+ "amber_delta": {
+  "op": "*",
+  "k": 3
+ },
+ "amber_ember": {
+  "op": "+",
+  "k": 3
+ },
+ "amber_falcon": {
+  "op": "*",
+  "k": 5
+ },
+ "amber_garnet": {
+  "op": "+",
+  "k": 5
+ },
+ "amber_harbor": {
+  "op": "+",
+  "k": 6
+ },
+ "amber_iris": {
+  "op": "*",
+  "k": 3
+ },
+ "amber_juniper": {
+  "op": "+",
+  "k": 9
+ },
+ "amber_kestrel": {
+  "op": "+",
+  "k": 7
+ },
+ "amber_lagoon": {
+  "op": "*",
+  "k": 9
+ },
+ "amber_maple": {
+  "op": "*",
+  "k": 5
+ },
+ "amber_nectar": {
+  "op": "+",
+  "k": 4
+ },
+ "amber_onyx": {
+  "op": "+",
+  "k": 7
+ },
+ "amber_pebble": {
+  "op": "+",
+  "k": 9
+ },
+ "brisk_badger": {
+  "op": "*",
+  "k": 3
+ },
+ "brisk_cedar": {
+  "op": "*",
+  "k": 4
+ },
+ "brisk_delta": {
+  "op": "+",
+  "k": 9
+ },
+ "brisk_ember": {
+  "op": "*",
+  "k": 9
+ },
+ "brisk_falcon": {
+  "op": "+",
+  "k": 8
+ },
+ "brisk_garnet": {
+  "op": "*",
+  "k": 9
+ },
+ "brisk_harbor": {
+  "op": "+",
+  "k": 6
+ },
+ "brisk_iris": {
+  "op": "*",
+  "k": 9
+ },
+ "brisk_juniper": {
+  "op": "+",
+  "k": 6
+ },
+ "brisk_kestrel": {
+  "op": "+",
+  "k": 7
+ },
+ "brisk_lagoon": {
+  "op": "*",
+  "k": 3
+ },
+ "brisk_maple": {
+  "op": "+",
+  "k": 6
+ },
+ "brisk_nectar": {
+  "op": "+",
+  "k": 4
+ },
+ "brisk_onyx": {
+  "op": "+",
+  "k": 8
+ },
+ "brisk_pebble": {
+  "op": "*",
+  "k": 7
+ },
+ "calm_badger": {
+  "op": "+",
+  "k": 2
+ },
+ "calm_cedar": {
+  "op": "*",
+  "k": 2
+ },
+ "calm_delta": {
+  "op": "*",
+  "k": 2
+ },
+ "calm_ember": {
+  "op": "*",
+  "k": 8
+ },
+ "calm_falcon": {
+  "op": "*",
+  "k": 9
+ },
+ "calm_garnet": {
+  "op": "*",
+  "k": 5
+ },
+ "calm_harbor": {
+  "op": "+",
+  "k": 8
+ },
+ "calm_iris": {
+  "op": "+",
+  "k": 9
+ },
+ "calm_juniper": {
+  "op": "+",
+  "k": 4
+ },
+ "calm_kestrel": {
+  "op": "+",
+  "k": 2
+ },
+ "calm_lagoon": {
+  "op": "*",
+  "k": 4
+ },
+ "calm_maple": {
+  "op": "*",
+  "k": 9
+ },
+ "calm_nectar": {
+  "op": "*",
+  "k": 7
+ },
+ "calm_onyx": {
+  "op": "+",
+  "k": 8
+ },
+ "calm_pebble": {
+  "op": "*",
+  "k": 6
+ },
+ "dusky_badger": {
+  "op": "+",
+  "k": 2
+ },
+ "dusky_cedar": {
+  "op": "+",
+  "k": 9
+ },
+ "dusky_delta": {
+  "op": "*",
+  "k": 2
+ },
+ "dusky_ember": {
+  "op": "*",
+  "k": 2
+ },
+ "dusky_falcon": {
+  "op": "+",
+  "k": 7
+ },
+ "dusky_garnet": {
+  "op": "+",
+  "k": 6
+ },
+ "dusky_harbor": {
+  "op": "+",
+  "k": 2
+ },
+ "dusky_iris": {
+  "op": "*",
+  "k": 9
+ },
+ "dusky_juniper": {
+  "op": "+",
+  "k": 9
+ },
+ "dusky_kestrel": {
+  "op": "*",
+  "k": 5
+ },
+ "dusky_lagoon": {
+  "op": "+",
+  "k": 2
+ },
+ "dusky_maple": {
+  "op": "+",
+  "k": 3
+ },
+ "dusky_nectar": {
+  "op": "*",
+  "k": 2
+ },
+ "dusky_onyx": {
+  "op": "+",
+  "k": 9
+ },
+ "dusky_pebble": {
+  "op": "*",
+  "k": 7
+ },
+ "eager_badger": {
+  "op": "*",
+  "k": 5
+ },
+ "eager_cedar": {
+  "op": "*",
+  "k": 8
+ },
+ "eager_delta": {
+  "op": "*",
+  "k": 6
+ },
+ "eager_ember": {
+  "op": "+",
+  "k": 7
+ },
+ "eager_falcon": {
+  "op": "*",
+  "k": 5
+ },
+ "eager_garnet": {
+  "op": "+",
+  "k": 4
+ },
+ "eager_harbor": {
+  "op": "*",
+  "k": 9
+ },
+ "eager_iris": {
+  "op": "+",
+  "k": 8
+ },
+ "eager_juniper": {
+  "op": "+",
+  "k": 2
+ },
+ "eager_kestrel": {
+  "op": "+",
+  "k": 4
+ },
+ "eager_lagoon": {
+  "op": "+",
+  "k": 9
+ },
+ "eager_maple": {
+  "op": "*",
+  "k": 8
+ },
+ "eager_nectar": {
+  "op": "+",
+  "k": 5
+ },
+ "eager_onyx": {
+  "op": "*",
+  "k": 8
+ },
+ "eager_pebble": {
+  "op": "+",
+  "k": 9
+ },
+ "fallow_badger": {
+  "op": "+",
+  "k": 7
+ },
+ "fallow_cedar": {
+  "op": "+",
+  "k": 7
+ },
+ "fallow_delta": {
+  "op": "*",
+  "k": 7
+ },
+ "fallow_ember": {
+  "op": "*",
+  "k": 8
+ },
+ "fallow_falcon": {
+  "op": "*",
+  "k": 2
+ },
+ "fallow_garnet": {
+  "op": "+",
+  "k": 3
+ },
+ "fallow_harbor": {
+  "op": "+",
+  "k": 4
+ },
+ "fallow_iris": {
+  "op": "+",
+  "k": 4
+ },
+ "fallow_juniper": {
+  "op": "*",
+  "k": 3
+ },
+ "fallow_kestrel": {
+  "op": "*",
+  "k": 2
+ },
+ "fallow_lagoon": {
+  "op": "*",
+  "k": 2
+ },
+ "fallow_maple": {
+  "op": "*",
+  "k": 6
+ },
+ "fallow_nectar": {
+  "op": "+",
+  "k": 8
+ },
+ "fallow_onyx": {
+  "op": "*",
+  "k": 3
+ },
+ "fallow_pebble": {
+  "op": "+",
+  "k": 2
+ },
+ "gentle_badger": {
+  "op": "+",
+  "k": 5
+ },
+ "gentle_cedar": {
+  "op": "+",
+  "k": 3
+ },
+ "gentle_delta": {
+  "op": "*",
+  "k": 4
+ },
+ "gentle_ember": {
+  "op": "*",
+  "k": 7
+ },
+ "gentle_falcon": {
+  "op": "*",
+  "k": 2
+ },
+ "gentle_garnet": {
+  "op": "*",
+  "k": 3
+ },
+ "gentle_harbor": {
+  "op": "+",
+  "k": 9
+ },
+ "gentle_iris": {
+  "op": "+",
+  "k": 7
+ },
+ "gentle_juniper": {
+  "op": "*",
+  "k": 7
+ },
+ "gentle_kestrel": {
+  "op": "+",
+  "k": 7
+ },
+ "gentle_lagoon": {
+  "op": "*",
+  "k": 7
+ },
+ "gentle_maple": {
+  "op": "*",
+  "k": 7
+ },
+ "gentle_nectar": {
+  "op": "+",
+  "k": 9
+ },
+ "gentle_onyx": {
+  "op": "*",
+  "k": 2
+ },
+ "gentle_pebble": {
+  "op": "*",
+  "k": 7
+ },
+ "hollow_badger": {
+  "op": "*",
+  "k": 7
+ },
+ "hollow_cedar": {
+  "op": "+",
+  "k": 7
+ },
+ "hollow_delta": {
+  "op": "+",
+  "k": 3
+ },
+ "hollow_ember": {
+  "op": "*",
+  "k": 4
+ },
+ "hollow_falcon": {
+  "op": "+",
+  "k": 6
+ },
+ "hollow_garnet": {
+  "op": "*",
+  "k": 2
+ },
+ "hollow_harbor": {
+  "op": "*",
+  "k": 4
+ },
+ "hollow_iris": {
+  "op": "*",
+  "k": 3
+ },
+ "hollow_juniper": {
+  "op": "+",
+  "k": 7
+ },
+ "hollow_kestrel": {
+  "op": "*",
+  "k": 6
+ },
+ "hollow_lagoon": {
+  "op": "*",
+  "k": 9
+ },
+ "hollow_maple": {
+  "op": "+",
+  "k": 5
+ },
+ "hollow_nectar": {
+  "op": "+",
+  "k": 6
+ },
+ "hollow_onyx": {
+  "op": "+",
+  "k": 7
+ },
+ "hollow_pebble": {
+  "op": "*",
+  "k": 8
+ },
+ "ivory_badger": {
+  "op": "*",
+  "k": 6
+ },
+ "ivory_cedar": {
+  "op": "+",
+  "k": 6
+ },
+ "ivory_delta": {
+  "op": "*",
+  "k": 8
+ },
+ "ivory_ember": {
+  "op": "+",
+  "k": 7
+ },
+ "ivory_falcon": {
+  "op": "+",
+  "k": 6
+ },
+ "ivory_garnet": {
+  "op": "+",
+  "k": 4
+ },
+ "ivory_harbor": {
+  "op": "*",
+  "k": 9
+ },
+ "ivory_iris": {
+  "op": "+",
+  "k": 9
+ },
+ "ivory_juniper": {
+  "op": "+",
+  "k": 4
+ },
+ "ivory_kestrel": {
+  "op": "+",
+  "k": 9
+ },
+ "ivory_lagoon": {
+  "op": "+",
+  "k": 7
+ },
+ "ivory_maple": {
+  "op": "*",
+  "k": 4
+ },
+ "ivory_nectar": {
+  "op": "+",
+  "k": 4
+ },
+ "ivory_onyx": {
+  "op": "*",
+  "k": 6
+ },
+ "ivory_pebble": {
+  "op": "*",
+  "k": 7
+ },
+ "jolly_badger": {
+  "op": "*",
+  "k": 5
+ },
+ "jolly_cedar": {
+  "op": "+",
+  "k": 4
+ },
+ "jolly_delta": {
+  "op": "*",
+  "k": 6
+ },
+ "jolly_ember": {
+  "op": "*",
+  "k": 8
+ },
+ "jolly_falcon": {
+  "op": "+",
+  "k": 8
+ },
+ "jolly_garnet": {
+  "op": "+",
+  "k": 7
+ },
+ "jolly_harbor": {
+  "op": "*",
+  "k": 5
+ },
+ "jolly_iris": {
+  "op": "*",
+  "k": 5
+ },
+ "jolly_juniper": {
+  "op": "+",
+  "k": 3
+ },
+ "jolly_kestrel": {
+  "op": "+",
+  "k": 4
+ },
+ "jolly_lagoon": {
+  "op": "*",
+  "k": 3
+ },
+ "jolly_maple": {
+  "op": "*",
+  "k": 8
+ },
+ "jolly_nectar": {
+  "op": "*",
+  "k": 7
+ },
+ "jolly_onyx": {
+  "op": "+",
+  "k": 2
+ },
+ "jolly_pebble": {
+  "op": "+",
+  "k": 9
+ }
+}
