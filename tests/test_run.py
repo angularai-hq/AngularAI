@@ -44,6 +44,7 @@ def setup(tmp_path: Path) -> tuple[Path, Path, Store]:
 
 def begin(tmp_path: Path, task: str = TASK, **options: object) -> tuple[Path, RunState, Store]:
     runs, work, store = setup(tmp_path)
+    options.setdefault("finish_check", False)
     state = run_loop.start(runs, task=task, root=work, cortex=store.root, **options)  # type: ignore[arg-type]
     return runs, state, store
 
@@ -317,7 +318,24 @@ def test_cli_runs_pauses_lists_and_resumes(
     monkeypatch.setattr("angularai.cli.build_substrate", lambda config, environ: scripted)
     cortex = ["--cortex", str(tmp_path / "cortex")]
     assert main([*cortex, "init"]) == 0
-    assert main([*cortex, "run", "--root", str(work), "--steps", "1", "--files", "off", TASK]) == 0
+    assert (
+        main(
+            [
+                *cortex,
+                "run",
+                "--root",
+                str(work),
+                "--steps",
+                "1",
+                "--files",
+                "off",
+                "--finish-check",
+                "off",
+                TASK,
+            ]
+        )
+        == 0
+    )
     err = capsys.readouterr().err
     run_id = err.split("run   ")[1].split()[0]
     assert "Paused at step 1." in err
@@ -535,3 +553,58 @@ def test_an_unknown_files_view_is_unreadable(tmp_path: Path) -> None:
     path.write_text(json.dumps({**json.loads(path.read_text()), "files_view": "x"}))
     with pytest.raises(InputRejected, match="unreadable"):
         run_loop.load(runs, state.id)
+
+
+def test_the_first_finish_gets_a_check_and_the_second_ends(tmp_path: Path) -> None:
+    runs, state, store = begin(tmp_path, native=False, finish_check=True)
+    (Path(state.root) / "a.py").write_text("x = 1  # TODO: name it\n", encoding="utf-8")
+    scripted = Scripted(
+        script=(
+            act("edit", path="notes.txt", old="green", new="blue"),
+            finished("Done early."),
+            act("edit", path="a.py", old="  # TODO: name it", new=""),
+            finished("Done."),
+            finished("Really done."),
+        )
+    )
+    done = run_loop.advance(runs, state, store, scripted)
+    assert (done.status, done.step, done.note) == ("done", 5, "Really done.")
+    check = scripted.seen[2].user
+    assert "FINISH CHECK" in check and f"TASK {TASK}" in check
+    assert "CHANGED notes.txt" in check and "a.py:1:" in check
+    assert "MARKERS none found." in scripted.seen[4].user
+    steps = [json.loads(line) for line in (runs / state.id / "steps.jsonl").open()]
+    assert [s["detail"] for s in steps if s.get("tool") == "finish"] == ["finish check"] * 2
+
+
+def test_without_the_finish_check_the_first_finish_ends(tmp_path: Path) -> None:
+    runs, state, store = begin(tmp_path, finish_check=False)
+    done = run_loop.advance(runs, state, store, Scripted(finished()))
+    assert run_loop.start(runs, task=TASK, root=Path(state.root), cortex=store.root).finish_check
+    assert (done.status, done.step) == ("done", 1)
+
+
+def test_a_change_is_kept_for_recall_and_never_its_output(tmp_path: Path) -> None:
+    runs, state, store = begin(tmp_path, native=False)
+    scripted = Scripted(
+        script=(
+            act("edit", path="notes.txt", old="green", new="a  bright\nblue"),
+            act("write", path="b.txt", text="x" * 400),
+            act("edit", path="notes.txt", old="absent", new="never"),
+            finished(),
+            finished(),
+        )
+    )
+    run_loop.advance(runs, state, store, scripted)
+    records = [json.loads(line)["user"] for line in (store.root / "passes.jsonl").open()]
+    assert records[1].endswith("EDITED notes.txt: a bright blue")
+    assert "WROTE b.txt: " + "x" * 297 + "..." in records[2]
+    assert "never" not in records[3]
+    steps = [json.loads(line) for line in (runs / state.id / "steps.jsonl").open()]
+    assert steps[0]["change"] == "EDITED notes.txt: a bright blue" and "change" not in steps[2]
+
+    runs2, state2, store2 = begin(tmp_path / "off", native=False, change_recall=False)
+    scripted2 = Scripted(act("edit", path="notes.txt", old="green", new="blue"))
+    run_loop.advance(runs2, state2, store2, scripted2, steps=2)
+    kept = (store2.root / "passes.jsonl").read_text()
+    assert "EDITED" not in kept

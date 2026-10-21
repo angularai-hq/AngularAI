@@ -58,6 +58,8 @@ _FILES = 16
 _PATH_CHARS = 100
 _TRAIL = 6
 _DWELL = 4
+_CHANGE_CHARS = 300
+_MARKER_LINES = 12
 _READ_LINE = re.compile(r"^\d+\|")
 
 # How working memory shows the files touched: "list" as FILES, "partial" as FILES
@@ -134,6 +136,12 @@ class RunState:
     updated: str = ""
     tokens: int = 0
     idle: int = 0
+    # The finish guard: on, the first finish gets a check and a second one ends.
+    finish_check: bool = True
+    checked: bool = False
+    # Edit recall: the last change's own text, kept in the cortex log for recall.
+    change_recall: bool = True
+    last_change: str = ""
     error: str = ""
     format: int = FORMAT
 
@@ -165,6 +173,8 @@ def start(
     allow_run: bool = False,
     native: bool = True,
     files_view: FilesView = "list",
+    finish_check: bool = True,
+    change_recall: bool = True,
 ) -> RunState:
     if not MIN_BUDGET <= budget <= MAX_BUDGET:
         raise InputRejected(f"The run budget must be from {MIN_BUDGET} to {MAX_BUDGET}.")
@@ -189,6 +199,8 @@ def start(
         allow_run=allow_run,
         native=native,
         files_view=files_view,
+        finish_check=finish_check,
+        change_recall=change_recall,
         created=now,
         updated=now,
     )
@@ -333,11 +345,13 @@ def arguments(action: Action) -> str:
 
 
 def _record(state: RunState) -> str:
-    """What the log keeps of a step: the run, the step, and the last tool and target.
-    Never the task again (working memory has it) and never tool output."""
+    """What the log keeps of a step: the run, the step, the last tool and target, and
+    with change_recall the text the model itself wrote by that call. Never the task
+    again (working memory has it) and never tool output."""
 
     body = f"RUN {state.id} STEP {state.step + 1}"
-    return body + (f"\nLAST {state.last_done}" if state.last_done else "")
+    body += f"\nLAST {state.last_done}" if state.last_done else ""
+    return body + (f"\n{state.last_change}" if state.change_recall and state.last_change else "")
 
 
 def _summary(index: int, done: str, output: str) -> str:
@@ -401,7 +415,23 @@ def advance(
                 "used": result.used,
                 "budget": result.budget,
             }
-            if result.held or result.act is None:
+            if result.act is None and not result.held and state.finish_check and not state.checked:
+                output = finish_check(state, directory, secrets)
+                state = replace(
+                    state,
+                    step=number,
+                    note=note,
+                    checked=True,
+                    idle=0,
+                    last_done="finish check",
+                    last_tool="",
+                    last_args="",
+                    last_change="",
+                    last_output=output[:_OUTPUT_KEEP],
+                    history=(*state.history, _summary(number, "finish check", output))[-_HISTORY:],
+                )
+                line.update(tool="finish", detail="finish check")
+            elif result.held or result.act is None:
                 status: Status = "held" if result.held else "done"
                 state = replace(state, step=number, status=status, note=note)
                 line.update(tool=None)
@@ -431,6 +461,8 @@ def advance(
                         else ""
                     ),
                     files=_touch(state.files, result.act, output),
+                    checked=state.checked and not _changed(output),
+                    last_change=change_text(result.act, output),
                     trail=trail,
                     recent=state.recent if result.act.problem else (*state.recent, key)[-_RECENT:],
                     last_args=arguments(result.act),
@@ -438,6 +470,8 @@ def advance(
                     history=(*state.history, _summary(number, done, output))[-_HISTORY:],
                 )
                 line.update(tool=result.act.tool or None, detail=done)
+                if state.change_recall and state.last_change:
+                    line["change"] = state.last_change
             state = replace(state, tokens=state.tokens + result.used, updated=_now(), error="")
             line["seconds"] = round(time.monotonic() - began, 2)
             if state.status == "running" and state.step >= state.max_steps:
@@ -474,6 +508,50 @@ def _touch(
     reads, changes = next(((r, c) for p, r, c in files if p == path), (0, 0))
     kept = tuple(item for item in files if item[0] != path)
     return (*kept, (path, reads + int(read), changes + int(changed)))[-_FILES:]
+
+
+def _changed(output: str) -> bool:
+    return output.startswith(("Edited ", "Wrote "))
+
+
+def change_text(action: Action, output: str) -> str:
+    """The text the model wrote by an edit or write that took, one line, clipped.
+    Its own words, not tool output: later steps recall what they changed."""
+
+    if not _changed(output):
+        return ""
+    raw = action.new if action.tool == "edit" else action.text
+    flat = " ".join(raw.split())
+    if len(flat) > _CHANGE_CHARS:
+        flat = flat[: _CHANGE_CHARS - 3] + "..."
+    verb = "EDITED" if action.tool == "edit" else "WROTE"
+    return f"{verb} {_path(action)}: {flat}"
+
+
+_MARKERS = ("TODO", "FIXME")
+
+
+def finish_check(state: RunState, root: Path, secrets: tuple[str, ...]) -> str:
+    """What the first finish gets: the task, the files changed, and the TODO and FIXME
+    lines a plain search finds. A second finish ends the run."""
+
+    changed = [path for path, _, changes in state.files if changes]
+    found: list[str] = []
+    for marker in _MARKERS:
+        hits = execute(root, Action("search", query=marker, path="."), secrets)
+        found.extend(line for line in hits.splitlines() if line.count(":") >= 2)
+    lines = [
+        "FINISH CHECK. The run has not ended.",
+        f"TASK {state.task}",
+        "CHANGED " + (", ".join(changed[-_FILES:]) if changed else "nothing"),
+    ]
+    if found:
+        lines.append(f"MARKERS {len(found)} lines still hold TODO or FIXME:")
+        lines.extend(found[:_MARKER_LINES])
+    else:
+        lines.append("MARKERS none found.")
+    lines.append("If every part of the task is done, call finish again. Else do the next part.")
+    return "\n".join(lines)
 
 
 def _dwell(trail: tuple[str, ...], path: str) -> str:

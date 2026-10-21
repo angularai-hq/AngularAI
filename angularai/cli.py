@@ -197,6 +197,8 @@ def _run(root: Path, args: argparse.Namespace) -> int:
             allow_run=args.allow_run,
             native=not args.json_acts,
             files_view=args.files,
+            finish_check=args.finish_check == "on",
+            change_recall=args.change_recall == "on",
         )
     store = _open(root)
     substrate = build_substrate(store.config(), os.environ)
@@ -518,6 +520,18 @@ def _parser() -> argparse.ArgumentParser:
         choices=run_loop.FILES_VIEWS,
         default="list",
         help="How working memory shows the files touched so far.",
+    )
+    run.add_argument(
+        "--finish-check",
+        choices=("on", "off"),
+        default="on",
+        help="On: the first finish gets a check of the task and TODOs; a second ends.",
+    )
+    run.add_argument(
+        "--change-recall",
+        choices=("on", "off"),
+        default="on",
+        help="On: the text of each edit and write is kept in the log for recall.",
     )
 
     ask_parser = sub.add_parser("ask", help="Ask another cortex one question.")
