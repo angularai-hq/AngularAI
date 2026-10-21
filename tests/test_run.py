@@ -317,7 +317,7 @@ def test_cli_runs_pauses_lists_and_resumes(
     monkeypatch.setattr("angularai.cli.build_substrate", lambda config, environ: scripted)
     cortex = ["--cortex", str(tmp_path / "cortex")]
     assert main([*cortex, "init"]) == 0
-    assert main([*cortex, "run", "--root", str(work), "--steps", "1", TASK]) == 0
+    assert main([*cortex, "run", "--root", str(work), "--steps", "1", "--files", "off", TASK]) == 0
     err = capsys.readouterr().err
     run_id = err.split("run   ")[1].split()[0]
     assert "Paused at step 1." in err
@@ -509,3 +509,29 @@ def test_a_repeat_is_the_same_call_not_the_same_file() -> None:
     assert run_loop.call_key(Action("read", path="a", start=2)) != run_loop.call_key(
         Action("read", path="a")
     )
+
+
+@pytest.mark.parametrize(
+    ("view", "head"),
+    [("list", "FILES (read, changed)\n"), ("partial", "Not the full set"), ("off", None)],
+)
+def test_the_files_view_is_a_choice(tmp_path: Path, view: str, head: str | None) -> None:
+    runs, state, store = begin(tmp_path, native=False, files_view=view)
+    scripted = Scripted(script=(act("read", path="notes.txt"), finished()))
+    done = run_loop.advance(runs, state, store, scripted)
+    assert done.files == (("notes.txt", 1, 0),)
+    second = scripted.seen[1]
+    if head is None:
+        assert "notes.txt  read 1" not in second.user and "files read" not in second.system
+    else:
+        assert head in second.user and "notes.txt  read 1" in second.user
+        assert "files read and changed" in second.system
+    assert run_loop.load(runs, state.id).files_view == view
+
+
+def test_an_unknown_files_view_is_unreadable(tmp_path: Path) -> None:
+    runs, state, _ = begin(tmp_path)
+    path = runs / state.id / "state.json"
+    path.write_text(json.dumps({**json.loads(path.read_text()), "files_view": "x"}))
+    with pytest.raises(InputRejected, match="unreadable"):
+        run_loop.load(runs, state.id)

@@ -60,6 +60,16 @@ _TRAIL = 6
 _DWELL = 4
 _READ_LINE = re.compile(r"^\d+\|")
 
+# How working memory shows the files touched: "list" as FILES, "partial" as FILES
+# labelled as not the full set, "off" not at all. The marks are kept either way.
+FilesView = Literal["list", "partial", "off"]
+FILES_VIEWS: tuple[FilesView, ...] = ("list", "partial", "off")
+_FILES_HEAD: dict[FilesView, str] = {
+    "list": "FILES (read, changed)",
+    "partial": "FILES TOUCHED SO FAR (read, changed). Not the full set: list to see all.",
+    "off": "",
+}
+
 Status = Literal["running", "done", "budget", "held", "stalled"]
 STATUSES: tuple[Status, ...] = ("running", "done", "budget", "held", "stalled")
 # Steps in a row with no tool call before the run stops as stalled.
@@ -81,6 +91,18 @@ RUN_SYSTEM = (
 )
 
 
+_NO_FILES = (
+    "WORKING MEMORY holds the task, the files read and changed so far, and the steps done",
+    "WORKING MEMORY holds the task and the steps done",
+)
+
+
+def run_system(view: FilesView) -> str:
+    """RUN_SYSTEM, without the files when working memory does not show them."""
+
+    return RUN_SYSTEM.replace(*_NO_FILES) if view == "off" else RUN_SYSTEM
+
+
 Progress = Callable[[str], None]
 
 
@@ -95,6 +117,7 @@ class RunState:
     allow_run: bool
     native: bool
     step: int = 0
+    files_view: "FilesView" = "list"
     status: Status = "running"
     note: str = ""
     history: tuple[str, ...] = ()
@@ -141,6 +164,7 @@ def start(
     max_steps: int = DEFAULT_STEPS,
     allow_run: bool = False,
     native: bool = True,
+    files_view: FilesView = "list",
 ) -> RunState:
     if not MIN_BUDGET <= budget <= MAX_BUDGET:
         raise InputRejected(f"The run budget must be from {MIN_BUDGET} to {MAX_BUDGET}.")
@@ -164,6 +188,7 @@ def start(
         max_steps=max_steps,
         allow_run=allow_run,
         native=native,
+        files_view=files_view,
         created=now,
         updated=now,
     )
@@ -212,7 +237,7 @@ def load(runs: Path, run_id: str) -> RunState:
         state = RunState(**payload)
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise InputRejected(f"The state of run {run_id} is unreadable.") from exc
-    if state.status not in STATUSES or state.id != run_id:
+    if state.status not in STATUSES or state.id != run_id or state.files_view not in FILES_VIEWS:
         raise InputRejected(f"The state of run {run_id} is unreadable.")
     return state
 
@@ -256,10 +281,14 @@ def working_memory(state: RunState) -> tuple[str, Exchange | None]:
     head = f"WORKING MEMORY\nTASK\n{state.task}\nSTEP {state.step + 1} of {state.max_steps}\n"
     if state.note:
         head += f"NOTE {state.note}\n"
-    if state.files:
-        head += "FILES (read, changed)\n" + "".join(
-            f"{path[:_PATH_CHARS]}  read {reads}  changed {changes}\n"
-            for path, reads, changes in state.files
+    if state.files and state.files_view != "off":
+        head += (
+            _FILES_HEAD[state.files_view]
+            + "\n"
+            + "".join(
+                f"{path[:_PATH_CHARS]}  read {reads}  changed {changes}\n"
+                for path, reads, changes in state.files
+            )
         )
     if state.history:
         head += "DONE\n" + "".join(f"{line}\n" for line in state.history)
@@ -352,7 +381,7 @@ def advance(
                     substrate,
                     text,
                     secrets,
-                    RUN_SYSTEM,
+                    run_system(state.files_view),
                     _record(state),
                     recall=recall,
                     index=index,

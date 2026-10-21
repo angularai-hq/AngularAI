@@ -196,6 +196,7 @@ def _run(root: Path, args: argparse.Namespace) -> int:
             max_steps=run_loop.DEFAULT_STEPS if args.max_steps is None else args.max_steps,
             allow_run=args.allow_run,
             native=not args.json_acts,
+            files_view=args.files,
         )
     store = _open(root)
     substrate = build_substrate(store.config(), os.environ)
@@ -511,6 +512,12 @@ def _parser() -> argparse.ArgumentParser:
     )
     run.add_argument(
         "--json-acts", action="store_true", help="Use the JSON act protocol, not tool calls."
+    )
+    run.add_argument(
+        "--files",
+        choices=run_loop.FILES_VIEWS,
+        default="list",
+        help="How working memory shows the files touched so far.",
     )
 
     ask_parser = sub.add_parser("ask", help="Ask another cortex one question.")
