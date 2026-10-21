@@ -37,7 +37,13 @@ def no_real_retry_wait(monkeypatch: pytest.MonkeyPatch) -> None:
 def no_real_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
     """Recall by meaning is off in every test unless the test turns it on itself."""
 
-    for name in ("ANGULARAI_EMBEDDINGS", "ANGULARAI_EMBEDDINGS_MODEL", "ANGULARAI_EMBEDDINGS_MIN"):
+    for name in (
+        "ANGULARAI_EMBEDDINGS",
+        "ANGULARAI_EMBEDDINGS_MODEL",
+        "ANGULARAI_EMBEDDINGS_MIN",
+        "ANGULARAI_EMBEDDINGS_URL",
+        "ANGULARAI_INDEX",
+    ):
         monkeypatch.delenv(name, raising=False)
 
 

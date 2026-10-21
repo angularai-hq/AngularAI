@@ -6,6 +6,8 @@ Off unless ANGULARAI_EMBEDDINGS names a provider. Nothing is sent while it is of
 - ``openai``: POST {base}/embeddings with OPENAI_API_KEY, ``text-embedding-3-small``
   at 512 dimensions. The base is the cortex's when it is wired to openai with one.
 - ``compatible``: the cortex's ``--base-url`` with ANGULARAI_API_KEY.
+- ``local``: ANGULARAI_EMBEDDINGS_URL (default Ollama, ``http://127.0.0.1:11434/v1``),
+  no key, ``nomic-embed-text``. Free, and nothing leaves the machine.
 
 ANGULARAI_EMBEDDINGS_MODEL names another model. ANGULARAI_EMBEDDINGS_MIN, from 0 to 1,
 default 0.35, is the cosine a trace needs. At most 8 traces match by meaning.
@@ -39,7 +41,9 @@ from angularai.secrets import redact
 from angularai.substrate import Transport, _Caller
 
 VECTORS = "embeddings.jsonl"
-MODES = ("off", "openai", "compatible")
+MODES = ("off", "openai", "compatible", "local")
+LOCAL_URL = "http://127.0.0.1:11434/v1"
+LOCAL_MODEL = "nomic-embed-text"
 DEFAULT_MODEL = "text-embedding-3-small"
 DEFAULT_MIN = 0.35
 TOP = 8
@@ -99,11 +103,10 @@ class EmbeddingsAPI:
         payload: dict[str, object] = {"model": self._model, "input": list(texts)}
         if self._dimensions is not None:
             payload["dimensions"] = self._dimensions
-        headers = {
-            "Authorization": f"Bearer {self._api_key}",
-            "Content-Type": "application/json",
-            "User-Agent": "angularai/0.1.0",
-        }
+        headers = {"Content-Type": "application/json", "User-Agent": "angularai/0.1.0"}
+        if self._api_key:
+            # A local server without a key gets no Authorization header at all.
+            headers["Authorization"] = f"Bearer {self._api_key}"
         reply = self._caller.post(self._caller.deadline(), self._url, headers, payload)
         return vectors_in(reply, len(texts), self._caller.provider)
 
@@ -147,9 +150,17 @@ def embedder_from_env(config: Config, environ: Mapping[str, str]) -> Embedder | 
 
     mode = environ.get("ANGULARAI_EMBEDDINGS", "").strip().lower() or "off"
     if mode not in MODES:
-        raise ConfigError("ANGULARAI_EMBEDDINGS must be off, openai, or compatible.")
+        raise ConfigError("ANGULARAI_EMBEDDINGS must be off, openai, compatible, or local.")
     if mode == "off":
         return None
+    if mode == "local":
+        return EmbeddingsAPI(
+            model=environ.get("ANGULARAI_EMBEDDINGS_MODEL", "").strip() or LOCAL_MODEL,
+            base_url=environ.get("ANGULARAI_EMBEDDINGS_URL", "").strip() or LOCAL_URL,
+            api_key="",
+            dimensions=None,
+            provider="local embeddings",
+        )
     model = environ.get("ANGULARAI_EMBEDDINGS_MODEL", "").strip() or DEFAULT_MODEL
     if mode == "openai":
         key = environ.get("OPENAI_API_KEY", "").strip()

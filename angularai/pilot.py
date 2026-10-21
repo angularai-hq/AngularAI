@@ -4,9 +4,12 @@ from uuid import uuid4
 
 from angularai.assemble import SYSTEM, assemble
 from angularai.errors import InputRejected, InputTooLong, SecretRefused, SubstrateError
+from angularai.index import CortexIndex, IndexUnavailable, assemble_indexed
 from angularai.lock import Thinker, ValueLock
 from angularai.models import (
     Action,
+    Config,
+    CortexView,
     Integration,
     Outcome,
     PassRecord,
@@ -33,6 +36,7 @@ def pass_turn(
     record: str | None = None,
     recall: SemanticRecall | None = None,
     peer: Peer | None = None,
+    index: CortexIndex | None = None,
 ) -> TurnResult:
     """One pass. record, when given, is what the log keeps in place of the input.
 
@@ -40,6 +44,8 @@ def pass_turn(
     peer, when given, is written with the pass. When the input came from the peer
     (answered), a trace names the peer as its source, and nothing is superseded:
     another cortex can add to what this one knows, never make it forget.
+    index, when given, is cortex v2 recall (angularai.index): it is synced with the log,
+    and the workspace is packed from its hybrid hits. recall is then not used.
     """
 
     text = screen(user_text, secrets)
@@ -47,8 +53,10 @@ def pass_turn(
     config = store.config()
     prompt = SYSTEM if system is None else system
     view = store.view()
-    meaning = None if recall is None else recall.ranks(view, text)
-    workspace = assemble(view, text, config, prompt, meaning)
+    workspace = None if index is None else _indexed(index, store, view, text, config, prompt)
+    if workspace is None:
+        meaning = None if recall is None else recall.ranks(view, text)
+        workspace = assemble(view, text, config, prompt, meaning)
     try:
         integration = substrate.integrate(workspace)
     except SubstrateError as exc:
@@ -75,9 +83,28 @@ def pass_turn(
         integration = replace(integration, supersede=())
     written = _ok_pass(kept, reply, drafts, integration, workspace, secrets, peer)
     store.append_pass(written)
-    if recall is not None:
+    if index is not None:
+        try:
+            index.sync(store)
+        except IndexUnavailable:
+            pass  # The log has the pass. The next sync indexes it.
+    elif recall is not None:
         recall.index(written.remember)
     return TurnResult(reply, False, workspace.estimated_tokens, workspace.budget, integration.act)
+
+
+def _indexed(
+    index: CortexIndex, store: Store, view: CortexView, text: str, config: Config, prompt: str
+) -> Workspace | None:
+    """The v2 workspace, or None when the index cannot be used and v1 recall takes over."""
+
+    try:
+        index.sync(store)
+        hits = index.search(view, text)
+        newest = index.newest()
+    except IndexUnavailable:
+        return None
+    return assemble_indexed(view, hits, newest, text, config, prompt)
 
 
 def screen(user_text: str, secrets: tuple[str, ...] = ()) -> str:

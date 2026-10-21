@@ -114,6 +114,150 @@
       "prompt_tokens_est_mean": 1904.1,
       "seconds_p50": 21.8,
       "errors": 0.0
+    },
+    {
+      "file": "v2-3b-2000.judged.jsonl",
+      "arm": "v2",
+      "model": "aa-qwen2.5-3b",
+      "budget": 2000,
+      "judge_model": "aa-qwen3-4b",
+      "complete": true,
+      "n": 50,
+      "judge": 44.0,
+      "contains": 26.2,
+      "abstention": 80.0,
+      "per_type": {
+        "knowledge-update": {
+          "n": 9,
+          "judge": 55.6,
+          "contains": 28.6
+        },
+        "multi-session": {
+          "n": 11,
+          "judge": 27.3,
+          "contains": 11.1
+        },
+        "single-session-assistant": {
+          "n": 6,
+          "judge": 50.0,
+          "contains": 16.7
+        },
+        "single-session-preference": {
+          "n": 3,
+          "judge": 100.0,
+          "contains": null
+        },
+        "single-session-user": {
+          "n": 8,
+          "judge": 75.0,
+          "contains": 57.1
+        },
+        "temporal-reasoning": {
+          "n": 13,
+          "judge": 15.4,
+          "contains": 23.1
+        }
+      },
+      "prompt_tokens_mean": null,
+      "prompt_tokens_est_mean": 1980.7,
+      "seconds_p50": 26.4,
+      "errors": 1.0
+    },
+    {
+      "file": "v2-c520315-3b-2000.judged.jsonl",
+      "arm": "v2",
+      "model": "aa-qwen2.5-3b",
+      "budget": 2000,
+      "judge_model": "aa-qwen3-4b",
+      "complete": true,
+      "n": 50,
+      "judge": 52.0,
+      "contains": 38.1,
+      "abstention": 80.0,
+      "per_type": {
+        "knowledge-update": {
+          "n": 9,
+          "judge": 77.8,
+          "contains": 57.1
+        },
+        "multi-session": {
+          "n": 11,
+          "judge": 27.3,
+          "contains": 11.1
+        },
+        "single-session-assistant": {
+          "n": 6,
+          "judge": 83.3,
+          "contains": 50.0
+        },
+        "single-session-preference": {
+          "n": 3,
+          "judge": 33.3,
+          "contains": null
+        },
+        "single-session-user": {
+          "n": 8,
+          "judge": 75.0,
+          "contains": 85.7
+        },
+        "temporal-reasoning": {
+          "n": 13,
+          "judge": 30.8,
+          "contains": 15.4
+        }
+      },
+      "prompt_tokens_mean": null,
+      "prompt_tokens_est_mean": 1980.9,
+      "seconds_p50": 30.8,
+      "errors": 0.0
+    },
+    {
+      "file": "full-3b.judged.jsonl",
+      "arm": "full",
+      "model": "aa-qwen2.5-3b",
+      "budget": null,
+      "judge_model": "aa-qwen3-4b",
+      "complete": true,
+      "n": 50,
+      "judge": 54.0,
+      "contains": 40.5,
+      "abstention": 80.0,
+      "per_type": {
+        "knowledge-update": {
+          "n": 9,
+          "judge": 44.4,
+          "contains": 42.9
+        },
+        "multi-session": {
+          "n": 11,
+          "judge": 36.4,
+          "contains": 11.1
+        },
+        "single-session-assistant": {
+          "n": 6,
+          "judge": 100.0,
+          "contains": 83.3
+        },
+        "single-session-preference": {
+          "n": 3,
+          "judge": 66.7,
+          "contains": null
+        },
+        "single-session-user": {
+          "n": 8,
+          "judge": 62.5,
+          "contains": 57.1
+        },
+        "temporal-reasoning": {
+          "n": 13,
+          "judge": 46.2,
+          "contains": 30.8
+        }
+      },
+      "prompt_tokens_mean": 10332.3,
+      "prompt_tokens_est_mean": 11937.2,
+      "seconds_p50": 307.7,
+      "errors": 0.0
     }
   ]
 }

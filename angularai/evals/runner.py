@@ -28,10 +28,12 @@ from angularai.evals.scoring import (
     usage,
     verdict,
 )
+from angularai.index import Unit
+from angularai.semantic import Embedder
 from angularai.substrate import Substrate
 
-Arm = Literal["full", "truncated", "oracle", "v1"]
-ARMS: tuple[Arm, ...] = ("full", "truncated", "oracle", "v1")
+Arm = Literal["full", "truncated", "oracle", "v1", "v2"]
+ARMS: tuple[Arm, ...] = ("full", "truncated", "oracle", "v1", "v2")
 Record = dict[str, object]
 Progress = Callable[[str], None]
 MAX_ANSWER_TOKENS = 256
@@ -67,13 +69,17 @@ def answer(
     *,
     budget: int,
     substrate: Substrate | None = None,
+    embedder: Embedder | None = None,
+    context: int = 0,
+    unit: Unit = "sentence",
+    word_rank: bool = False,
 ) -> Record:
     record: Record = {
         "id": question.id,
         "type": question.type,
         "arm": arm,
         "model": chat.model,
-        "budget": budget if arm in ("truncated", "v1") else None,
+        "budget": budget if arm in ("truncated", "v1", "v2") else None,
         "prediction": "",
         "error": None,
         "prompt_tokens": None,
@@ -83,9 +89,9 @@ def answer(
     }
     start = time.monotonic()
     try:
-        if arm == "v1":
+        if arm in ("v1", "v2"):
             if substrate is None:
-                raise EvalError("The v1 arm needs a substrate.")
+                raise EvalError(f"The {arm} arm needs a substrate.")
             with tempfile.TemporaryDirectory(prefix="angularai-eval-") as scratch:
                 result = answer_v1(
                     Path(scratch) / "cortex",
@@ -94,6 +100,11 @@ def answer(
                     budget=budget,
                     model=chat.model,
                     base_url=chat.base_url,
+                    v2=arm == "v2",
+                    embedder=embedder,
+                    context=context,
+                    unit=unit,
+                    word_rank=word_rank,
                 )
             record.update(
                 prediction=result.reply,
@@ -101,6 +112,14 @@ def answer(
                 episodes=result.episodes,
                 episodes_shown=result.episodes_shown,
             )
+            if arm == "v2":
+                record.update(
+                    chunks=result.chunks,
+                    embed_model=None if embedder is None else embedder.model,
+                    context=context,
+                    unit=unit,
+                    word_rank=word_rank,
+                )
         else:
             prompt = _prompt(arm, question, budget)
             completion = chat.complete(SYSTEM, prompt, MAX_ANSWER_TOKENS)
@@ -132,6 +151,10 @@ def run(
     *,
     budget: int,
     substrate: Substrate | None = None,
+    embedder: Embedder | None = None,
+    context: int = 0,
+    unit: Unit = "sentence",
+    word_rank: bool = False,
     progress: Progress | None = None,
 ) -> int:
     """Answer every question not yet in out. Returns how many were answered now."""
@@ -141,7 +164,17 @@ def run(
     for question in questions:
         if question.id in seen:
             continue
-        record = answer(arm, question, chat, budget=budget, substrate=substrate)
+        record = answer(
+            arm,
+            question,
+            chat,
+            budget=budget,
+            substrate=substrate,
+            embedder=embedder,
+            context=context,
+            unit=unit,
+            word_rank=word_rank,
+        )
         append(out, record)
         count += 1
         if progress is not None:

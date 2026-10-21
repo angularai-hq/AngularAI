@@ -1,9 +1,12 @@
-"""The v1 arm: the history goes into a real v1 cortex, and the question is one v1 pass.
+"""The v1 and v2 arms: the history goes into a real v1 cortex, and the question is one v1 pass.
 
 Each user turn and the assistant turn after it become one episode in passes.jsonl.
 Nothing is sent to the model while the history is written: no model-written traces,
 so recall is v1's lexical recall over episodes. The question then runs through
 angularai.pilot.pass_turn at the given workspace budget, exactly as `angularai say`.
+The v2 arm is the same pass with a cortex v2 index (angularai.index): the log is
+indexed on the first sync, as a v1 cortex migrates, with local vectors when an
+embedder is given.
 """
 
 from dataclasses import dataclass, replace
@@ -11,8 +14,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from angularai.evals.dataset import Question, Turn
+from angularai.index import CortexIndex, Unit, task_prefixes
 from angularai.models import PassRecord
 from angularai.pilot import pass_turn
+from angularai.semantic import Embedder
 from angularai.store import default_config, init_cortex, open_store
 from angularai.substrate import Substrate
 
@@ -28,6 +33,7 @@ class V1Answer:
     budget: int
     episodes: int
     episodes_shown: int
+    chunks: int = 0
 
 
 def at(date: str, step: int) -> str:
@@ -69,7 +75,18 @@ def v1_input(question: Question) -> str:
 
 
 def answer_v1(
-    root: Path, question: Question, substrate: Substrate, *, budget: int, model: str, base_url: str
+    root: Path,
+    question: Question,
+    substrate: Substrate,
+    *,
+    budget: int,
+    model: str,
+    base_url: str,
+    v2: bool = False,
+    embedder: Embedder | None = None,
+    context: int = 0,
+    unit: Unit = "sentence",
+    word_rank: bool = False,
 ) -> V1Answer:
     init_cortex(root)
     store = open_store(root)
@@ -88,7 +105,24 @@ def answer_v1(
     written = episodes(question)
     for record in written:
         store.append_pass(record)
-    result = pass_turn(store, substrate, v1_input(question))
+    index = None
+    if v2:
+        document, query = task_prefixes(embedder.model if embedder is not None else "")
+        index = CortexIndex(
+            root,
+            embedder,
+            document_prefix=document,
+            query_prefix=query,
+            context=context,
+            unit=unit,
+            word_rank=word_rank,
+        )
+    try:
+        result = pass_turn(store, substrate, v1_input(question), index=index)
+        chunks = 0 if index is None else index.chunks()
+    finally:
+        if index is not None:
+            index.close()
     last = store.last_pass()
     shown = 0 if last is None else last.episodes_shown
     return V1Answer(
@@ -97,6 +131,7 @@ def answer_v1(
         budget=result.budget,
         episodes=len(written),
         episodes_shown=shown,
+        chunks=chunks,
     )
 
 
