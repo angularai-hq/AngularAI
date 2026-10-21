@@ -1,0 +1,26 @@
+{
+ "run": "r_5543be3209c3",
+ "status": "budget",
+ "steps": 40,
+ "max_steps": 40,
+ "budget": 2000,
+ "contiguous": true,
+ "tokens_per_step": {
+  "mean": 976.1,
+  "median": 1027.0,
+  "max": 1412,
+  "min": 266
+ },
+ "over_budget_steps": 0,
+ "seconds_per_step": {
+  "mean": 18.95,
+  "median": 20.045
+ },
+ "tools": {
+  "list": 12,
+  "remember": 8,
+  "read": 7,
+  "edit": 13
+ },
+ "total_tokens": 39045
+}
