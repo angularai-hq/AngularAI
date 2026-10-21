@@ -112,6 +112,20 @@ Tue 20 Oct 2026. `v2` arm: `aa-qwen2.5-3b`, budget 2,000, local `nomic-embed-tex
 - Retrieval itself is not the gap: on a dev subset disjoint from b50, the gold answer is in v2's workspace as often as or more often than in v1's.
 - The strict gap to `full` is not closed. v2 stays off by default (`ANGULARAI_INDEX=off`).
 
+## Results: cortex v2, second run
+
+Wed 21 Oct 2026. Revision `c520315`. Same arm, model, budget and questions. Sentence chunks, picked on a 40-question dev subset disjoint from b50 over turn and episode chunks (dev: sentence 57.5, episode 55.0, episode plus word rank 52.5, v1 62.5). File: `results/b50/v2-c520315-3b-2000.judged.jsonl`.
+
+| arm | judge % | contains % | est. tokens | p50 s |
+| --- | --- | --- | --- | --- |
+| `v1` | 54.0 | 31.0 | 1,904 | 21.8 |
+| `v2` | 52.0 | 38.1 | 1,981 | 30.8 |
+| `full` | 54.0 | 40.5 | 11,937 | 307.7 |
+
+- v2 is -2.0 judge and +7.1 contains against v1. It is -2.0 judge and -2.4 contains against `full`, at a sixth of the tokens. No errors.
+- Sentence chunks scored 44.0 / 26.2 in the first run, one revision earlier. A swing that size means 50 questions on a 3B model cannot separate v1 from v2 on judge.
+- v2 does not beat v1. v2 stays off by default (`ANGULARAI_INDEX=off`).
+
 ## Kill rule
 
 No "beats frontier" claim unless benchmark A shows at least +10 points over the small model alone.
