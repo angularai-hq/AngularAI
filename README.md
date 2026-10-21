@@ -178,6 +178,20 @@ The model does not receive the tree. It receives the task, the last tool, and th
 
 `--cortex PATH` can sit anywhere on the command. `ANGULARAI_CORTEX` does the same.
 
+## Run
+
+```bash
+angularai run --root ./project --max-steps 500 "port the parser to the new API"
+angularai run --resume r_3f9a0c11b2de
+angularai run --list
+```
+
+A long task in a fixed window. Every step is one pass at `--budget` tokens (default 4,000; 1,000 to 32,000). Half of it at most is working memory: the task, the step, the model's last note, the last 10 steps in one line each, and the last tool call with its output, clipped to fit. The rest is recall, rebuilt every step: the v2 index when `ANGULARAI_INDEX` is on, else v1 attention. The window does not grow with the run.
+
+The tools are `angularai agent`'s, with its limits, in one directory, `run` off without `--allow-run`. On an OpenAI-compatible server they are native tool calls, with `finish` to end and `remember` to keep a trace; the last call and its output go back as a tool turn. A server that refuses tools, an Anthropic model, or `--json-acts` gets the JSON act protocol. A reply with no tool call is a step that tells the model so. Three in a row stop the run as `stalled`. A step that repeats one of the last three is told so.
+
+State is in `~/.angularai/runs/<id>/` (or under `ANGULARAI_HOME`): `state.json`, rewritten atomically after every step, and `steps.jsonl`, one line a step with its tokens and seconds. A step counts once it is written. A run killed mid-step repeats that step on resume. `--steps N` pauses after N steps. `--resume ID --max-steps N` raises the limit, and a run out of steps runs again. One process holds a run at a time. A run ends `done`, `budget`, `held`, or `stalled`. The log keeps each step's tool and target, never its output. Working memory's one-line summaries live only in `state.json`.
+
 ## Talk
 
 ```bash

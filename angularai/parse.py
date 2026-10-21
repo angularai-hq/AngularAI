@@ -118,7 +118,8 @@ _TEXT_FIELDS = {
     "text": 80000,
     "command": 400,
 }
-_ACT_FIELDS = frozenset({"tool", "start", "overwrite", *_TEXT_FIELDS})
+# note is the model's own progress line, taken by every tool and never run.
+_ACT_FIELDS = frozenset({"tool", "start", "overwrite", "note", *_TEXT_FIELDS})
 _MAX_START = 100000
 
 
@@ -177,3 +178,137 @@ def _supersede(value: object) -> tuple[str, ...]:
         if isinstance(item, str) and _TRACE_ID.fullmatch(item) and item not in ids:
             ids.append(item)
     return tuple(ids)
+
+
+def _function(
+    name: str, description: str, fields: dict[str, str], required: list[str]
+) -> dict[str, object]:
+    kinds = {"start": "integer", "overwrite": "boolean"}
+    if name not in ("finish", "remember"):
+        fields = {**fields, "note": "Short: what is done so far and what comes next."}
+    return {
+        "type": "function",
+        "function": {
+            "name": name,
+            "description": description,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    field: {"type": kinds.get(field, "string"), "description": text}
+                    for field, text in fields.items()
+                },
+                "required": required,
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+# The agent tools as OpenAI-style function definitions. remember is not a tool that
+# runs: it becomes a trace, judged by the lock like any other.
+TOOL_SPECS: tuple[dict[str, object], ...] = (
+    _function("list", "List a directory inside the root.", {"path": "A directory."}, ["path"]),
+    _function(
+        "read",
+        "Read a text file, 160 lines at a time.",
+        {"path": "A file.", "start": "The first line, from 1."},
+        ["path"],
+    ),
+    _function(
+        "search",
+        "Find lines that contain a text.",
+        {"query": "The text.", "path": "A directory or file."},
+        ["query"],
+    ),
+    _function(
+        "edit",
+        "Replace one exact text in a file.",
+        {"path": "A file.", "old": "The exact text.", "new": "Its replacement."},
+        ["path", "old", "new"],
+    ),
+    _function(
+        "write",
+        "Write a new file, or overwrite one when overwrite is true.",
+        {"path": "A file.", "text": "The whole content.", "overwrite": "Replace a file."},
+        ["path", "text"],
+    ),
+    _function(
+        "run",
+        "Run one allowlisted program. No shell.",
+        {"command": "The program and its arguments."},
+        ["command"],
+    ),
+    _function(
+        "finish",
+        "End the run: the task is done.",
+        {"summary": "What was done."},
+        ["summary"],
+    ),
+    _function(
+        "remember",
+        "Keep one durable fact for later steps.",
+        {"text": "One fact, at most 240 characters."},
+        ["text"],
+    ),
+)
+TOOL_NAMES = frozenset({"list", "read", "search", "edit", "write", "run"})
+
+
+# A step that only kept facts. It runs nothing; the traces are its work.
+REMEMBERED = Action(tool="remember")
+IDLE = Action(tool="", problem="No tool was called. Call one tool, or finish.")
+
+
+def integration_from_calls(content: str, calls: Sequence[object]) -> Integration:
+    """A native reply: content and tool calls. The first tool call is the act.
+
+    remember calls become traces. finish ends the work: its act is None and its summary
+    the reply. Arguments that are not a JSON object refuse the act, as a malformed JSON
+    act does. Only remember calls make REMEMBERED. No tool call at all is IDLE: a
+    refused act that tells the model to call a tool, so a stray sentence never ends
+    a long run.
+    """
+
+    act: Action | None = None
+    finished = ""
+    drafts: list[TraceDraft] = []
+    for call in calls:
+        function = call.get("function") if isinstance(call, dict) else None
+        name = function.get("name") if isinstance(function, dict) else None
+        raw = function.get("arguments") if isinstance(function, dict) else None
+        arguments: object = raw
+        if isinstance(raw, str):
+            try:
+                arguments = json.loads(raw) if raw.strip() else {}
+            except (ValueError, RecursionError):
+                arguments = None
+        if not isinstance(name, str):
+            continue
+        if name == "remember":
+            text = arguments.get("text") if isinstance(arguments, dict) else None
+            draft = trace_draft(text) if isinstance(text, str) else None
+            if draft is not None and len(drafts) < _MAX_REMEMBER:
+                drafts.append(draft)
+            continue
+        if act is not None or finished:
+            continue
+        if name == "finish":
+            summary = arguments.get("summary") if isinstance(arguments, dict) else None
+            finished = summary if isinstance(summary, str) and summary.strip() else "Done."
+            continue
+        if not isinstance(arguments, dict):
+            act = _refused(
+                name.strip().lower()[:16], "The tool call arguments are not a JSON object."
+            )
+        else:
+            note = arguments.get("note")
+            if isinstance(note, str) and note.strip() and not content.strip():
+                content = note
+            act = _act({**arguments, "tool": name})
+    if finished:
+        reply = " ".join(finished.split())[:_MAX_REPLY]
+        return Integration(reply=reply, remember=tuple(drafts), supersede=(), act=None)
+    reply = " ".join(content.split())[:_MAX_REPLY] or "Working."
+    if act is None:
+        act = REMEMBERED if drafts else IDLE
+    return Integration(reply=reply, remember=tuple(drafts), supersede=(), act=act)

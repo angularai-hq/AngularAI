@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Literal
 
 from angularai import __version__
+from angularai import run as run_loop
 from angularai.agent import run_agent
 from angularai.configure import add_lock, remove_lock, set_budget, wire
 from angularai.errors import AngularAIError, InputRejected, KeyMissing, NoCortex
@@ -61,7 +62,9 @@ def _dispatch(args: argparse.Namespace, cortex: Path | None, name: str | None) -
         return model_command(args)
     if command is None:
         _boot(root)
-    if command in {None, "say", "agent"} and offer_setup(root) == "cancelled":
+    if command == "run" and (args.resume or args.list):
+        return _run(root, args)
+    if command in {None, "say", "agent", "run"} and offer_setup(root) == "cancelled":
         print("Setup was left. Run angularai setup when you are ready.", file=sys.stderr)
         return 0 if command is None else 1
     if command is None:
@@ -82,6 +85,8 @@ def _dispatch(args: argparse.Namespace, cortex: Path | None, name: str | None) -
         return _say(root, " ".join(args.text))
     if command == "agent":
         return _agent(root, args)
+    if command == "run":
+        return _run(root, args)
     if command == "cortex":
         print(format_traces(_open(root).view()))
         return 0
@@ -161,6 +166,58 @@ def _agent(root: Path, args: argparse.Namespace) -> int:
     if result.stop == "budget":
         print("The step budget is spent.", file=sys.stderr)
     print(result.reply)
+    return 0
+
+
+def _run(root: Path, args: argparse.Namespace) -> int:
+    runs = run_loop.runs_dir(os.environ)
+    if args.list:
+        for item in run_loop.listing(runs):
+            print(f"{item.id}  {item.status}  {item.step}/{item.max_steps}  {item.task[:60]}")
+        return 0
+    secrets = secret_values(os.environ)
+    if args.resume:
+        if args.task:
+            raise InputRejected("--resume continues a run; it takes no task.")
+        state = run_loop.load(runs, args.resume)
+        if args.max_steps is not None:
+            state = run_loop.raise_limit(state, args.max_steps)
+        root = Path(state.cortex)
+    else:
+        if not args.task:
+            raise InputRejected("Say what the run should do, or --resume a run.")
+        directory = Path.cwd() if args.root is None else args.root
+        state = run_loop.start(
+            runs,
+            task=screen(" ".join(args.task), secrets),
+            root=directory,
+            cortex=root,
+            budget=args.budget,
+            max_steps=run_loop.DEFAULT_STEPS if args.max_steps is None else args.max_steps,
+            allow_run=args.allow_run,
+            native=not args.json_acts,
+        )
+    store = _open(root)
+    substrate = build_substrate(store.config(), os.environ)
+    print(f"run   {state.id}", file=sys.stderr)
+    print(f"root  {state.root}", file=sys.stderr)
+    print(f"step  {state.step} of {state.max_steps}, budget {state.budget}", file=sys.stderr)
+    state = run_loop.advance(
+        runs,
+        state,
+        store,
+        substrate,
+        secrets=secrets,
+        steps=args.steps,
+        index=_index(store, secrets),
+        recall=_semantic(store),
+        progress=lambda line: print(line, file=sys.stderr),
+    )
+    if state.status == "running":
+        print(f"Paused at step {state.step}. angularai run --resume {state.id}", file=sys.stderr)
+    elif state.status == "budget":
+        print("The step budget is spent.", file=sys.stderr)
+    print(state.note)
     return 0
 
 
@@ -428,6 +485,32 @@ def _parser() -> argparse.ArgumentParser:
         "--allow-run",
         action="store_true",
         help="Let the agent start allowlisted programs. Off by default.",
+    )
+
+    run = sub.add_parser("run", help="Work a long task, checkpointed after every step.")
+    run.add_argument("task", nargs="*")
+    run.add_argument("--resume", metavar="ID", default=None, help="Continue a run.")
+    run.add_argument("--list", action="store_true", help="List the runs.")
+    run.add_argument("--root", type=Path, default=None)
+    run.add_argument(
+        "--max-steps", type=int, default=None, help="The run's step limit. Default 50."
+    )
+    run.add_argument(
+        "--steps", type=int, default=None, help="Steps this call may take, then pause."
+    )
+    run.add_argument(
+        "--budget",
+        type=int,
+        default=run_loop.DEFAULT_BUDGET,
+        help="Tokens a step's workspace may take. The window is fixed.",
+    )
+    run.add_argument(
+        "--allow-run",
+        action="store_true",
+        help="Let the run start allowlisted programs. Off by default.",
+    )
+    run.add_argument(
+        "--json-acts", action="store_true", help="Use the JSON act protocol, not tool calls."
     )
 
     ask_parser = sub.add_parser("ask", help="Ask another cortex one question.")
