@@ -10,6 +10,7 @@ from angularai.models import (
     Action,
     Config,
     CortexView,
+    Exchange,
     Integration,
     Outcome,
     PassRecord,
@@ -37,6 +38,9 @@ def pass_turn(
     recall: SemanticRecall | None = None,
     peer: Peer | None = None,
     index: CortexIndex | None = None,
+    budget: int | None = None,
+    native_tools: bool = False,
+    exchange: Exchange | None = None,
 ) -> TurnResult:
     """One pass. record, when given, is what the log keeps in place of the input.
 
@@ -46,17 +50,42 @@ def pass_turn(
     another cortex can add to what this one knows, never make it forget.
     index, when given, is cortex v2 recall (angularai.index): it is synced with the log,
     and the workspace is packed from its hybrid hits. recall is then not used.
+    budget, when given, is this pass's workspace budget in place of the cortex's; the
+    input may then take up to half of it. native_tools asks for native tool calls, and
+    exchange, the last call and its output, is sent after the workspace as a tool turn.
+    Its tokens come out of the budget and the input's half.
     """
 
     text = screen(user_text, secrets)
 
     config = store.config()
+    if budget is not None:
+        config = replace(config, workspace_budget=budget, max_input_tokens=max(32, budget // 2))
+    reserved = 0 if exchange is None else exchange.tokens()
+    if reserved:
+        whole = config.workspace_budget
+        if reserved >= config.max_input_tokens:
+            raise InputTooLong("The last tool output does not fit the input budget.")
+        config = replace(
+            config,
+            workspace_budget=whole - reserved,
+            max_input_tokens=config.max_input_tokens - reserved,
+        )
     prompt = SYSTEM if system is None else system
     view = store.view()
     workspace = None if index is None else _indexed(index, store, view, text, config, prompt)
     if workspace is None:
         meaning = None if recall is None else recall.ranks(view, text)
         workspace = assemble(view, text, config, prompt, meaning)
+    if native_tools:
+        workspace = replace(workspace, native_tools=True)
+    if exchange is not None:
+        workspace = replace(
+            workspace,
+            exchange=exchange,
+            estimated_tokens=workspace.estimated_tokens + reserved,
+            budget=workspace.budget + reserved,
+        )
     try:
         integration = substrate.integrate(workspace)
     except SubstrateError as exc:

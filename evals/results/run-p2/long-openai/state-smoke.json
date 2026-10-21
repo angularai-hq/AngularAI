@@ -1,0 +1,81 @@
+{
+ "id": "r_248675ab99fb",
+ "task": "For each module in src/, read it and replace its TODO docstring with a one-line description of what the function does. Then write SUMMARY.md listing every module with its description. Finish when all modules are done.",
+ "root": "/workspace/angularai/v2/runs/p2/long-openai/work-smoke",
+ "cortex": "/workspace/angularai/v2/runs/p2/long-openai/home-smoke/default",
+ "budget": 2000,
+ "max_steps": 6,
+ "allow_run": false,
+ "native": true,
+ "step": 6,
+ "files_view": "list",
+ "status": "budget",
+ "note": "Continue module inventory from amber onward; next inspect basil for TODO docstrings.",
+ "history": [
+  "1  list  src  ->  acorn.py (+45 lines)",
+  "2  read  src/acorn.py  ->  1|def acorn(x): (+2 lines)",
+  "3  list  src  ->  acorn.py (+46 lines)",
+  "4  read  src/amber.py  ->  1|def amber(x): (+2 lines)",
+  "5  list  src  ->  acorn.py (+46 lines)",
+  "6  read  src/basil.py  ->  1|def basil(x): (+2 lines)"
+ ],
+ "last_done": "read  src/basil.py",
+ "last_tool": "read",
+ "last_args": "{\"path\": \"src/basil.py\"}",
+ "last_output": "1|def basil(x):\n2|    \"\"\"TODO: describe.\"\"\"\n3|    return x * 5",
+ "recent": [
+  "read {\"path\": \"src/amber.py\"}",
+  "list {\"path\": \"src\"}",
+  "read {\"path\": \"src/basil.py\"}"
+ ],
+ "files": [
+  [
+   "src/acorn.py",
+   1,
+   0
+  ],
+  [
+   "src/amber.py",
+   1,
+   0
+  ],
+  [
+   "src/basil.py",
+   1,
+   0
+  ]
+ ],
+ "trail": [
+  "",
+  "src/acorn.py",
+  "",
+  "src/amber.py",
+  "",
+  "src/basil.py"
+ ],
+ "created": "2026-10-21T13:34:52+00:00",
+ "updated": "2026-10-21T13:35:04+00:00",
+ "tokens": 3103,
+ "idle": 0,
+ "finish_check": true,
+ "checked": false,
+ "finish_checks": 2,
+ "checks": 0,
+ "change_recall": true,
+ "last_change": "",
+ "price": [
+  0.75,
+  4.5,
+  0.075
+ ],
+ "max_cost": 0.25,
+ "cost": 0.00884325,
+ "step_cost_max": 0.00237225,
+ "billed": [
+  6523,
+  0,
+  878
+ ],
+ "error": "",
+ "format": 1
+}

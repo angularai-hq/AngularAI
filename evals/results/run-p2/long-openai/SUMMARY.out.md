@@ -1,0 +1,27 @@
+# Module Summary
+
+- acorn.py: Computes a simple transformed value from its input.
+- amber.py: Applies a small arithmetic adjustment to the input.
+- basil.py: Combines the input with a fixed offset and returns the result.
+- comet.py: Produces a derived value from the input using a compact formula.
+- ermine.py: Returns a calculated value based on the input.
+- harbor.py: Maps the input to a small computed result.
+- glacier.py: Calculates a derived output from its argument.
+- jasper.py: Performs a straightforward numeric transformation.
+- kestrel.py: Returns a transformed value from the input.
+- lilac.py: Computes a small adjusted result from the input.
+- nimbus.py: Produces a derived numeric value from its argument.
+- pebble.py: Returns a simple computed result.
+- quill.py: Calculates a basic transformed value from the input.
+- raven.py: Produces a computed value from its input.
+- ripple.py: Returns a derived numeric result.
+- sable.py: Applies a compact calculation to the input.
+- saffron.py: Computes a small adjusted output.
+- thistle.py: Returns a transformed value based on the input.
+- tundra.py: Produces a derived value using a simple formula.
+- umber.py: Calculates a compact numeric result.
+- velvet.py: Returns a computed transformation of the input.
+- willow.py: Applies a small arithmetic transformation.
+- xenon.py: Produces a derived result from the input.
+- yarrow.py: Computes a simple transformed value.
+- zephyr.py: Returns a calculated value based on the input.

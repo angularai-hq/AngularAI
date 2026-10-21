@@ -1,0 +1,49 @@
+{
+ "run": "r_9b2c0ec06ad4",
+ "status": "stalled",
+ "steps": 466,
+ "max_steps": 500,
+ "budget": 2000,
+ "contiguous": true,
+ "files": 130,
+ "files_done": 130,
+ "files_correct": 130,
+ "summary": true,
+ "summary_listed": 130,
+ "summary_correct": 1,
+ "tokens": {
+  "mean": 1945,
+  "median": 1984.0,
+  "max": 1995,
+  "over_budget": 0
+ },
+ "tokens_by_third": [
+  1867,
+  1983,
+  1985
+ ],
+ "seconds": {
+  "mean": 1.4,
+  "total_min": 10.5
+ },
+ "seconds_by_third": [
+  1.4,
+  1.4,
+  1.3
+ ],
+ "correct_rate_first_half_done": 1.0,
+ "correct_rate_second_half_done": 1.0,
+ "steps_per_file_by_half": [
+  3.0,
+  3.0
+ ],
+ "tools": {
+  "edit": 133,
+  "finish": 8,
+  "list": 14,
+  "read": 160,
+  "search": 150,
+  "write": 1
+ },
+ "finish_checks": 0
+}

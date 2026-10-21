@@ -1,0 +1,34 @@
+{
+ "amber_badger": {
+  "op": "+",
+  "k": 9
+ },
+ "amber_cedar": {
+  "op": "+",
+  "k": 8
+ },
+ "amber_delta": {
+  "op": "*",
+  "k": 3
+ },
+ "amber_ember": {
+  "op": "+",
+  "k": 3
+ },
+ "amber_falcon": {
+  "op": "*",
+  "k": 5
+ },
+ "amber_garnet": {
+  "op": "+",
+  "k": 5
+ },
+ "amber_harbor": {
+  "op": "+",
+  "k": 6
+ },
+ "amber_iris": {
+  "op": "*",
+  "k": 3
+ }
+}

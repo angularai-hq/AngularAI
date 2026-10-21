@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Literal
 
+from angularai.budget import estimate_tokens
+
 SubstrateKind = Literal["openai", "anthropic", "compatible"]
 Outcome = Literal["ok", "held", "error"]
 TraceState = Literal["current", "superseded"]
@@ -46,6 +48,7 @@ class Action:
     command: str = ""
     start: int = 1
     overwrite: bool = False
+    append: bool = False
     # Why parse refused this act. A refused act is never run; the model is told why.
     problem: str = ""
 
@@ -88,6 +91,18 @@ class CortexView:
 
 
 @dataclass(frozen=True)
+class Exchange:
+    """The last tool call and its output, sent as a native assistant/tool pair."""
+
+    tool: str
+    arguments: str
+    output: str
+
+    def tokens(self) -> int:
+        return estimate_tokens(f"{self.tool} {self.arguments}\n{self.output}") + 8
+
+
+@dataclass(frozen=True)
 class Workspace:
     system: str
     user: str
@@ -99,6 +114,10 @@ class Workspace:
     traces_held: int
     episodes_shown: int
     episodes_held: int
+    # True asks the substrate for native tool calls (angularai.parse.TOOL_SPECS).
+    native_tools: bool = False
+    # Counted in estimated_tokens. Only a native substrate sends it.
+    exchange: Exchange | None = None
 
 
 @dataclass(frozen=True)

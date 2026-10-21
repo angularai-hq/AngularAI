@@ -1,0 +1,227 @@
+Cortex is at /workspace/angularai/v2/runs/p2/long-openai/home-smoke/default
+Set up a model with: angularai setup
+Wired openai / gpt-5.4-mini
+The key is read from OPENAI_API_KEY when you speak. It is not stored.
+== 2026-10-21 15:34:52 CEST smoke: start, max-steps 6, max-cost 0.25, spent so far $0.000000
+run   r_248675ab99fb
+root  /workspace/angularai/v2/runs/p2/long-openai/work-smoke
+step  0 of 6, budget 2000
+1  list  src  274
+2  read  src/acorn.py  465
+3  list  src  445
+4  read  src/amber.py  617
+5  list  src  564
+6  read  src/basil.py  738
+The step budget is spent.
+cost  $0.0088
+Continue module inventory from amber onward; next inspect basil for TODO docstrings.
+== 2026-10-21 15:35:04 CEST smoke: 6 budget 0.008843; total spent $0.008843
+== 2026-10-21 15:35:04 CEST total spent $0.008843 of $10
+== DONE
+Cortex is at /workspace/angularai/v2/runs/p2/long-openai/home-long/default
+Set up a model with: angularai setup
+Wired openai / gpt-5.4-mini
+The key is read from OPENAI_API_KEY when you speak. It is not stored.
+== 2026-10-21 15:36:09 CEST long: start, max-steps 500, max-cost 8, spent so far $0.008843
+run   r_b158fef2312b
+root  /workspace/angularai/v2/runs/p2/long-openai/work-long
+step  0 of 500, budget 2000
+1  list  src  275
+2  read  src/acorn.py  472
+3  edit  src/acorn.py  449
+4  list  src  525
+5  read  src/amber.py  709
+6  edit  src/amber.py  644
+7  list  src  717
+8  read  src/basil.py  901
+9  edit  src/basil.py  837
+10  list  src  915
+11  read  src/birch.py  1096
+12  edit  src/birch.py  1050
+13  read  src/cedar.py  1097
+14  edit  src/cedar.py  1149
+15  list  src  1215
+16  read  src/comet.py  1349
+17  edit  src/comet.py  1311
+18  list  src  1385
+19  read  src/delta.py  1541
+20  edit  src/delta.py  1476
+21  list  src  1543
+22  read  src/dune.py  1692
+23  edit  src/dune.py  1628
+24  list  src  1643
+25  read  src/ember.py  1830
+26  edit  src/ember.py  1773
+27  list  src  1827
+28  read  src/ermine.py  1975
+29  edit  src/ermine.py  1934
+30  list  src  1975
+31  read  src/fable.py  1973
+32  edit  src/fable.py  1972
+33  list  src  1969
+34  read  src/fjord.py  1970
+35  edit  src/fjord.py  1980
+36  list  src  1970
+37  read  src/garnet.py  1973
+38  edit  src/garnet.py  1970
+39  list  src  1968
+40  read  src/glacier.py  1970
+41  read  src/haven.py  1969
+42  list  src  1975
+43  read  src/harbor.py  1969
+44  edit  src/harbor.py  1979
+45  read  src/glacier.py  1969
+46  edit  src/glacier.py  1976
+47  read  src/glacier.py  1974
+48  list  src  1975
+49  read  src/heron.py  1984
+50  edit  src/heron.py  1982
+51  list  src  1979
+52  read  src/indigo.py  1976
+53  edit  src/indigo.py  1981
+54  list  src  1978
+55  read  src/iris.py  1987
+56  edit  src/iris.py  1984
+57  list  src  1978
+58  read  src/jasper.py  1985
+59  edit  src/jasper.py  1984
+60  list  src  1980
+61  read  src/juniper.py  1982
+62  edit  src/juniper.py  1977
+63  list  src  1980
+64  read  src/kestrel.py  1985
+65  edit  src/kestrel.py  1973
+66  list  src  1971
+67  read  src/koala.py  1982
+68  edit  src/koala.py  1976
+69  list  src  1981
+70  read  src/lagoon.py  1978
+71  edit  src/lagoon.py  1975
+72  list  src  1981
+73  read  src/acorn.py  1971
+74  read  src  1974
+75  list  src  1979
+76  read  src/birch.py  1984
+77  edit  src/birch.py  1980
+78  read  src/acorn.py  1976
+79  write  SUMMARY.md  1968
+80  finish check  1983
+81  read  src/lilac.py  1981
+82  edit  src/lilac.py  1974
+83  search  TODO: describe  1985
+84  list  src  1985
+85  search  TODO: describe  1983
+86  read  src/maple.py  1986
+87  edit  src/maple.py  1983
+88  search  TODO: describe  1980
+89  read  src/meadow.py  1981
+90  edit  src/meadow.py  1981
+91  search  TODO: describe  1976
+92  read  src/nectar.py  1966
+93  edit  src/nectar.py  1982
+94  search  TODO: describe  1977
+95  read  src/nimbus.py  1974
+96  edit  src/nimbus.py  1969
+97  read  SUMMARY.md  1968
+98  search  TODO: describe  1980
+99  read  src/onyx.py  1972
+100  edit  src/onyx.py  1980
+101  search  TODO: describe  1974
+102  read  src/orchid.py  1983
+103  edit  src/orchid.py  1971
+104  search  TODO: describe  1983
+105  read  src/pebble.py  1975
+106  edit  src/pebble.py  1982
+107  search  TODO: describe  1981
+108  read  src/poplar.py  1980
+109  edit  src/poplar.py  1977
+110  search  TODO: describe  1979
+111  read  src/quartz.py  1963
+112  edit  src/quartz.py  1983
+113  search  TODO: describe  1970
+114  read  src/quill.py  1985
+115  edit  src/quill.py  1983
+116  search  TODO: describe  1971
+117  read  src/raven.py  1979
+118  edit  src/raven.py  1972
+119  search  TODO: describe  1981
+120  read  src/ripple.py  1977
+121  edit  src/ripple.py  1982
+122  search  TODO: describe  1982
+123  read  src/sable.py  1965
+124  edit  src/sable.py  1980
+125  search  TODO: describe  1979
+126  read  src/saffron.py  1980
+127  edit  src/saffron.py  1978
+128  search  TODO: describe  1984
+129  read  src/thistle.py  1967
+130  list  src  1980
+131  search  TODO: describe  1976
+132  read  src/tundra.py  1982
+133  edit  src/tundra.py  1983
+134  search  TODO: describe  1982
+135  read  src/thistle.py  1964
+136  edit  src/thistle.py  1970
+137  search  TODO: describe  1980
+138  read  src/umber.py  1985
+139  edit  src/umber.py  1984
+140  search  TODO: describe  1986
+141  read  src/velvet.py  1979
+142  edit  src/velvet.py  1978
+143  search  TODO: describe  1970
+144  read  src/willow.py  1966
+145  edit  src/willow.py  1977
+146  search  TODO: describe  1981
+147  read  src/xenon.py  1973
+148  edit  src/xenon.py  1979
+149  search  TODO: describe  1984
+150  read  src/yarrow.py  1981
+151  edit  src/yarrow.py  1976
+152  search  TODO: describe  1975
+153  read  src/zephyr.py  1965
+154  edit  src/zephyr.py  1978
+155  read  src/pebble.py  1985
+156  list  src  1976
+157  search  TODO: describe  1984
+158  list  src  1976
+159  read  src/acorn.py  1973
+160  write  SUMMARY.md  1973
+161  edit  SUMMARY.md  1983
+162  read  SUMMARY.md  1980
+163  write  SUMMARY.md  1986
+164  edit  SUMMARY.md  1984
+That input does not fit the workspace. The input cap is 186 estimated tokens.
+== 2026-10-21 15:40:22 CEST long: resume 1 from 164 running 0.45025
+run   r_b158fef2312b
+root  /workspace/angularai/v2/runs/p2/long-openai/work-long
+step  164 of 500, budget 2000
+That input does not fit the workspace. The input cap is 186 estimated tokens.
+== 2026-10-21 15:40:43 CEST long: resume 2 from 164 running 0.463591
+run   r_b158fef2312b
+root  /workspace/angularai/v2/runs/p2/long-openai/work-long
+step  164 of 500, budget 2000
+That input does not fit the workspace. The input cap is 186 estimated tokens.
+== 2026-10-21 15:41:03 CEST long: resume 3 from 164 running 0.476932
+run   r_b158fef2312b
+root  /workspace/angularai/v2/runs/p2/long-openai/work-long
+step  164 of 500, budget 2000
+That input does not fit the workspace. The input cap is 186 estimated tokens.
+== 2026-10-21 15:41:23 CEST long: 164 running 0.490273; total spent $0.499116
+== 2026-10-21 15:41:23 CEST total spent $0.499116 of $10
+== DONE
+== 2026-10-21 15:43:05 CEST fix 'clip long arguments' at 848d165; resume the same run
+== smoke over budget; stop
+== 2026-10-21 15:43:42 CEST long: resume 1 from 164 running 0.490273
+run   r_b158fef2312b
+root  /workspace/angularai/v2/runs/p2/long-openai/work-long
+step  164 of 500, budget 2000
+165  read  SUMMARY.md  1983
+166  read  SUMMARY.md  1988
+167  write  SUMMARY.md  1982
+168  finish check  1974
+169  done  1986
+cost  $0.5024
+Replaced TODO docstrings with one-line descriptions in all src modules and wrote SUMMARY.md listing every module with its description.
+== 2026-10-21 15:43:49 CEST long: 169 done 0.502399; total spent $0.511242
+== 2026-10-21 15:43:49 CEST total spent $0.511242 of $10
+== DONE

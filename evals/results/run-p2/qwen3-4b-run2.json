@@ -1,0 +1,27 @@
+{
+ "run": "r_d69503a8f570",
+ "status": "done",
+ "steps": 21,
+ "max_steps": 40,
+ "budget": 2000,
+ "contiguous": true,
+ "tokens_per_step": {
+  "mean": 667.6,
+  "median": 718,
+  "max": 999,
+  "min": 275
+ },
+ "over_budget_steps": 0,
+ "seconds_per_step": {
+  "mean": 7.01,
+  "median": 6.87
+ },
+ "tools": {
+  "list": 4,
+  "read": 10,
+  "edit": 5,
+  "write": 1,
+  "none": 1
+ },
+ "total_tokens": 14019
+}

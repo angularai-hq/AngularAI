@@ -1,0 +1,47 @@
+{
+ "run": "r_4b1d66573242",
+ "status": "budget",
+ "steps": 12,
+ "max_steps": 12,
+ "budget": 2000,
+ "contiguous": true,
+ "files": 150,
+ "files_done": 3,
+ "files_correct": 3,
+ "summary": false,
+ "summary_listed": 0,
+ "summary_correct": 0,
+ "tokens": {
+  "mean": 858,
+  "median": 889.5,
+  "max": 1438,
+  "over_budget": 0
+ },
+ "tokens_by_third": [
+  508,
+  887,
+  1178
+ ],
+ "seconds": {
+  "mean": 1.5,
+  "total_min": 0.3
+ },
+ "seconds_by_third": [
+  1.7,
+  1.3,
+  1.3
+ ],
+ "correct_rate_first_half_done": 1.0,
+ "correct_rate_second_half_done": 1.0,
+ "steps_per_file_by_half": [
+  0.0,
+  3.5
+ ],
+ "tools": {
+  "edit": 3,
+  "list": 3,
+  "read": 3,
+  "search": 3
+ },
+ "finish_checks": 0
+}

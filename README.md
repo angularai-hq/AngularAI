@@ -178,6 +178,49 @@ The model does not receive the tree. It receives the task, the last tool, and th
 
 `--cortex PATH` can sit anywhere on the command. `ANGULARAI_CORTEX` does the same.
 
+## Run
+
+```bash
+angularai run --root ./project --max-steps 500 "port the parser to the new API"
+angularai run --resume r_3f9a0c11b2de
+angularai run --list
+```
+
+A long task in a fixed window. Every step is one pass at `--budget` tokens (default 4,000; 1,000 to 32,000). Half of it at most is working memory: the task, the step, the model's last note, the last 10 steps in one line each, and the last tool call with its output, clipped to fit. The rest is recall, rebuilt every step: the v2 index when `ANGULARAI_INDEX` is on, else v1 attention. The window does not grow with the run.
+
+The tools are `angularai agent`'s, with its limits, in one directory, `run` off without `--allow-run`. On an OpenAI-compatible server they are native tool calls, with `finish` to end and `remember` to keep a trace; the last call and its output go back as a tool turn. A server that refuses tools, an Anthropic model, or `--json-acts` gets the JSON act protocol. A reply with no tool call is a step that tells the model so. Three in a row stop the run as `stalled`. A call that repeats one of the last three exactly is told so, and so is a fourth step in six on one file. Working memory lists the files read and changed so far, 16 at most; `--files partial` labels the list as not the full set, `--files off` leaves it out. A missed `edit` quotes the file's closest line, so the model can copy its spaces. The first `finish` gets a check instead of an end: the task, the files changed, and the TODO and FIXME lines a search finds; a second `finish` ends the run (`--finish-check off` turns this off). The text of each edit and write that took, clipped to 300 characters, goes into the pass log as the model's own words, so later steps recall what they wrote (`--change-recall off` keeps only the tool and target).
+
+State is in `~/.angularai/runs/<id>/` (or under `ANGULARAI_HOME`): `state.json`, rewritten atomically after every step, and `steps.jsonl`, one line a step with its tokens and seconds. A step counts once it is written. A run killed mid-step repeats that step on resume. `--steps N` pauses after N steps. `--resume ID --max-steps N` raises the limit, and a run out of steps runs again. One process holds a run at a time. A run ends `done`, `budget`, `held`, or `stalled`. The log keeps each step's tool and target and, with change recall, the text the model wrote, never tool output. Working memory's one-line summaries live only in `state.json`.
+
+A finish is weighed against the work left. Every line under the root that holds a
+marker (`--markers TODO,FIXME` by default) is counted, in full, and a finish is
+refused while the count is above zero; the refusal lists the first lines and the
+files that hold them. `--summary SUMMARY.md --summary-of "src/*.py"` adds a final
+artifact: the finish is refused until the summary exists, was written after every
+file it covers, names each, and says something specific about each, something the
+file's own docstring or first lines say that most of the others do not. When the
+count is off (`--markers ""`) or the root is too large to count and there is no
+summary, `--finish-checks N` caps the checks as before. `--finish-refusals N`
+(default 5) refused finishes in a row with no change between them stall the run.
+A refusal for the summary quotes a batch of the files it misses or is vague about,
+each one's docstring or first lines, about one per 150 tokens of budget (3 to 15), so
+the model can fill the summary in batches without holding every file in its window.
+The batch, as ready-made summary lines, is pinned in working memory with the exact
+next call (`write` with `append: true`) until the summary file changes. `write` takes
+`append: true` to add lines to the end of a file. After an edit or write to a `.py`
+file, the tool output reports the first syntax error, if any, so the model can fix it.
+`--search-hits N` (default 30, at most 200) sets how many lines a search returns.
+
+A paid model can carry a spend limit. `--max-cost 8` reads the usage block of
+every response, prices it per 1M tokens (input, cached input, output), and stops
+the run cleanly, with status `cost`, before a step that could take the total over
+the limit. The next step is priced at 1.25 times the dearest step so far, or, before
+any step, at the most the window and a full completion could use. Prices for
+gpt-5.4-mini, gpt-5.4-nano and gpt-5.4 are built in (OpenAI standard tier,
+2026-10-21); give any other model's with `--price IN,OUT,CACHED`. Each step's cost
+and the running total go into `steps.jsonl`. `--resume ID --max-cost N` raises the
+limit.
+
 ## Talk
 
 ```bash

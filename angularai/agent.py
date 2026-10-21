@@ -78,8 +78,8 @@ def run_agent(
             stop: Stop = "held" if result.held else "done"
             return AgentResult(reply, index, stop)
         if on_step is not None:
-            on_step(f"{index}  {_detail(result.act)}")
-        done = _detail(result.act)
+            on_step(f"{index}  {detail(result.act)}")
+        done = detail(result.act)
         last = (done, execute(directory, result.act, secrets, allow_run))
     return AgentResult(reply, steps, "budget")
 
@@ -90,20 +90,20 @@ def _step_input(task: str, index: int, steps: int, last: tuple[str, str] | None)
         return body
     done, output = last
     clipped = output if len(output) <= _LAST_CHARS else output[: _LAST_CHARS - 3] + "..."
-    fence = _fence(clipped)
+    marker = fence(clipped)
     return (
         f"{body}\n\nSTEP {index} of {steps}\nLAST {done}\n"
-        f"BEGIN TOOL OUTPUT {fence}\n{clipped}\nEND TOOL OUTPUT {fence}"
+        f"BEGIN TOOL OUTPUT {marker}\n{clipped}\nEND TOOL OUTPUT {marker}"
     )
 
 
-def _fence(output: str) -> str:
+def fence(output: str) -> str:
     """A marker the output does not contain, so a file cannot close the data block."""
 
     while True:
-        fence = token_hex(6)
-        if fence not in output:
-            return fence
+        marker = token_hex(6)
+        if marker not in output:
+            return marker
 
 
 def _step_record(task: str, index: int, steps: int, done: str | None) -> str:
@@ -115,7 +115,7 @@ def _step_record(task: str, index: int, steps: int, done: str | None) -> str:
     return f"{body}\n\nSTEP {index} of {steps}\n{done}"
 
 
-def _detail(action: Action) -> str:
+def detail(action: Action) -> str:
     if action.tool == "search":
         target = action.query or action.path
     elif action.tool == "run":

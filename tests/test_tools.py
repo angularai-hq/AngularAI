@@ -61,3 +61,14 @@ def test_search_stays_inside_and_run_refuses_a_shell(tmp_path: Path) -> None:
     assert "Refused bash" in refused
     left = execute(root, Action("run", command="rm -rf /"), allow_run=True)
     assert "leaves the directory" in left
+
+
+def test_a_missed_edit_quotes_the_closest_line(tmp_path: Path) -> None:
+    (tmp_path / "z.py").write_text('def z(x):\n    """TODO: describe."""\n    return x\n')
+    missed = execute(tmp_path, Action("edit", path="z.py", old='"""TODO: describe.""" ', new="x"))
+    assert missed.startswith("That text is not in the file. Line 2 is close: ")
+    assert '"    \\"\\"\\"TODO: describe.\\"\\"\\""' in missed
+    far = execute(tmp_path, Action("edit", path="z.py", old="completely unrelated", new="x"))
+    assert far == "That text is not in the file."
+    blank = execute(tmp_path, Action("edit", path="z.py", old="\n\n", new="x"))
+    assert blank == "That text is not in the file."

@@ -1,0 +1,50 @@
+{
+ "run": "r_daf23c02c440",
+ "status": "done",
+ "steps": 71,
+ "max_steps": 300,
+ "budget": 2000,
+ "contiguous": true,
+ "files": 46,
+ "files_done": 21,
+ "files_correct": 21,
+ "summary": true,
+ "summary_listed": 2,
+ "summary_correct": 2,
+ "tokens": {
+  "mean": 1428,
+  "median": 1565,
+  "max": 1978,
+  "over_budget": 0
+ },
+ "tokens_by_third": [
+  847,
+  1569,
+  1842
+ ],
+ "seconds": {
+  "mean": 20.4,
+  "total_min": 24.1
+ },
+ "seconds_by_third": [
+  8.0,
+  22.6,
+  29.9
+ ],
+ "correct_rate_first_half_done": 1.0,
+ "correct_rate_second_half_done": 1.0,
+ "steps_per_file_by_half": [
+  3.1,
+  3.2
+ ],
+ "tools": {
+  "edit": 22,
+  "finish": 2,
+  "list": 5,
+  "none": 1,
+  "read": 21,
+  "search": 19,
+  "write": 1
+ },
+ "finish_checks": 2
+}

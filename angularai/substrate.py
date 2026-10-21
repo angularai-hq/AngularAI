@@ -4,6 +4,8 @@ import math
 import re
 import time
 from collections.abc import Callable, Mapping
+from dataclasses import replace
+from secrets import token_hex
 from typing import Protocol, assert_never
 
 from angularai.budget import estimate_tokens
@@ -28,7 +30,8 @@ from angularai.errors import (
 )
 from angularai.http import http_json
 from angularai.models import Config, Integration, SubstrateKind, Workspace
-from angularai.parse import parse_integration
+from angularai.parse import TOOL_SPECS, integration_from_calls, parse_integration
+from angularai.pricing import Usage, usage_of
 from angularai.profiles import KEY_ENVS, Vault, effective_config, saved_key
 from angularai.provider import (
     Clock,
@@ -45,6 +48,12 @@ Answer = tuple[int, bytes] | tuple[int, bytes, Mapping[str, str]]
 Transport = Callable[[str, dict[str, str], Mapping[str, object], float], Answer]
 _PARSE_NUDGE = "\n\nReturn only the JSON object."
 _NO_REPLY = "returned no reply. Nothing was written."
+
+
+class Metered(Protocol):
+    """A substrate that reports what it was billed."""
+
+    def billed(self) -> Usage: ...
 
 
 class Substrate(Protocol):
@@ -82,6 +91,8 @@ class _Caller:
         self.clock = clock or Clock()
         self.provider = provider
         self.secret = secret
+        # Every token billed through this caller, failed passes included.
+        self.usage = Usage()
 
     def deadline(self) -> Deadline:
         return Deadline(self.policy.deadline, self.clock)
@@ -114,7 +125,9 @@ class _Caller:
                         provider=self.provider,
                         now=self.clock.wall(),
                     )
-                return _object(body, self.secret, self.provider)
+                parsed = _object(body, self.secret, self.provider)
+                self.usage = self.usage + usage_of(parsed)
+                return parsed
             except SubstrateError as exc:
                 if attempt >= self.policy.attempts:
                     raise
@@ -154,8 +167,21 @@ class OpenAICompatible:
             transport=transport, policy=policy, clock=clock, provider=provider, secret=api_key
         )
 
+    def billed(self) -> Usage:
+        """Every token this substrate has been billed for."""
+
+        return self._caller.usage
+
     def integrate(self, workspace: Workspace) -> Integration:
         deadline = self._caller.deadline()
+        if workspace.native_tools:
+            try:
+                return self._native(deadline, workspace)
+            except RequestRejected as exc:
+                if exc.status != 400:
+                    raise
+                # A server without tool calling: the JSON act protocol below.
+        workspace = inline_exchange(workspace)
         try:
             text = self._complete(deadline, workspace, self._json_mode, workspace.user)
         except RequestRejected as exc:
@@ -171,6 +197,25 @@ class OpenAICompatible:
             if projected > workspace.budget:
                 raise
             return parse_integration(self._complete(deadline, workspace, False, extra))
+
+    def _native(self, deadline: Deadline, workspace: Workspace) -> Integration:
+        payload: dict[str, object] = {
+            "model": self._model,
+            self._completion_field: 2048,
+            "messages": native_messages(workspace),
+            "tools": list(TOOL_SPECS),
+            "tool_choice": "auto",
+        }
+        url = f"{self._base_url}/chat/completions"
+        reply = self._caller.post(deadline, url, _openai_headers(self._api_key), payload)
+        content, calls = openai_message(reply, self._caller.provider)
+        if calls:
+            return integration_from_calls(content, calls)
+        try:
+            return parse_integration(content)
+        except SubstrateUnreadable:
+            # Plain text and no tool call: idle, and the model is told so.
+            return integration_from_calls(content, ())
 
     def ping(self) -> None:
         payload: dict[str, object] = {
@@ -236,8 +281,14 @@ class Anthropic:
             transport=transport, policy=policy, clock=clock, provider=provider, secret=api_key
         )
 
+    def billed(self) -> Usage:
+        """Every token this substrate has been billed for."""
+
+        return self._caller.usage
+
     def integrate(self, workspace: Workspace) -> Integration:
         deadline = self._caller.deadline()
+        workspace = inline_exchange(workspace)
         text = self._complete(deadline, workspace.system, workspace.user)
         try:
             return parse_integration(text)
@@ -409,6 +460,62 @@ def openai_text(payload: Mapping[str, object], provider: str = "") -> str:
     if not isinstance(content, str) or not content.strip():
         raise SubstrateUnreadable(f"{_subject(provider)} {_NO_REPLY}")
     return content
+
+
+def inline_exchange(workspace: Workspace) -> Workspace:
+    """The workspace for the JSON act protocol: the last call and output in the text."""
+
+    exchange = workspace.exchange
+    if exchange is None:
+        return workspace
+    marker = token_hex(6)
+    while marker in exchange.output:
+        marker = token_hex(6)
+    block = (
+        f"\n\nLAST {exchange.tool} {exchange.arguments}\n"
+        f"BEGIN TOOL OUTPUT {marker}\n{exchange.output}\nEND TOOL OUTPUT {marker}"
+    )
+    return replace(workspace, user=workspace.user + block, exchange=None)
+
+
+def native_messages(workspace: Workspace) -> list[dict[str, object]]:
+    """System, user, and the last tool call with its output as an assistant/tool pair."""
+
+    messages: list[dict[str, object]] = [
+        {"role": "system", "content": workspace.system},
+        {"role": "user", "content": workspace.user},
+    ]
+    exchange = workspace.exchange
+    if exchange is not None:
+        call = {
+            "id": "call_last",
+            "type": "function",
+            "function": {"name": exchange.tool, "arguments": exchange.arguments},
+        }
+        messages.append({"role": "assistant", "content": "", "tool_calls": [call]})
+        marker = token_hex(6)
+        while marker in exchange.output:
+            marker = token_hex(6)
+        content = f"BEGIN TOOL OUTPUT {marker}\n{exchange.output}\nEND TOOL OUTPUT {marker}"
+        messages.append({"role": "tool", "tool_call_id": "call_last", "content": content})
+    return messages
+
+
+def openai_message(payload: Mapping[str, object], provider: str = "") -> tuple[str, list[object]]:
+    """The content and the tool calls of a chat completion. One of them must be there."""
+
+    choices = payload.get("choices")
+    first = choices[0] if isinstance(choices, list) and choices else None
+    message = first.get("message") if isinstance(first, Mapping) else None
+    if not isinstance(message, Mapping):
+        raise SubstrateUnreadable(f"{_subject(provider)} {_NO_REPLY}")
+    content = message.get("content")
+    text = content if isinstance(content, str) else ""
+    raw = message.get("tool_calls")
+    calls = list(raw) if isinstance(raw, list) else []
+    if not text.strip() and not calls:
+        raise SubstrateUnreadable(f"{_subject(provider)} {_NO_REPLY}")
+    return text, calls
 
 
 def anthropic_text(payload: Mapping[str, object], provider: str = "") -> str:

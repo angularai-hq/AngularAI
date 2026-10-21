@@ -1,9 +1,12 @@
+import ast
+import json
 import os
 import shlex
 import shutil
 import signal
 import subprocess
 import threading
+from difflib import get_close_matches
 from pathlib import Path
 
 from angularai import files
@@ -19,12 +22,15 @@ _READ_BYTES = 4 * 1024 * 1024
 _SEARCH_FILE = 1024 * 1024
 _SEARCH_BYTES = 16 * 1024 * 1024
 _WALK_MAX = 20000
-_SEARCH_MAX = 30
+SEARCH_HITS = 30
+MAX_SEARCH_HITS = 200
+_HIT_CHARS = 64
 _WRITE_MAX = 80_000
 _RESULT = 1600
 _RUN_TIMEOUT = 20
 _RUN_OUTPUT = 64 * 1024
 _RUN_PATH = "/usr/bin:/bin"
+_CLOSEST_LINES = 5000
 _SKIP = {".git", ".venv", "node_modules", "__pycache__", "dist", ".mypy_cache", ".ruff_cache"}
 # Programs run may start. None of them runs another program, opens a socket, or reads a
 # list of file names from a file. Shells, interpreters, find, xargs, env, git, and make
@@ -75,8 +81,12 @@ def execute(
     action: Action,
     secrets: tuple[str, ...] = (),
     allow_run: bool = False,
+    search_hits: int = SEARCH_HITS,
 ) -> str:
-    """Run one tool inside root. A refusal is a sentence, not an exception."""
+    """Run one tool inside root. A refusal is a sentence, not an exception.
+
+    search returns at most search_hits lines, and its result may grow to hold them;
+    the run's window clips any result to its share of the budget."""
 
     root = root.resolve()
     tool = action.tool
@@ -87,11 +97,13 @@ def execute(
     elif tool == "read":
         result = _read(root, action.path, action.start)
     elif tool == "search":
-        result = _search(root, action.path or ".", action.query)
+        hits = max(1, min(search_hits, MAX_SEARCH_HITS))
+        result = _search(root, action.path or ".", action.query, hits)
+        return _clip(redact(result, secrets), max(_RESULT, hits * _HIT_CHARS))
     elif tool == "edit":
         result = _edit(root, action.path, action.old, action.new)
     elif tool == "write":
-        result = _write(root, action.path, action.text, action.overwrite)
+        result = _write(root, action.path, action.text, action.overwrite, action.append)
     elif tool == "run":
         result = _run(root, action.command) if allow_run else _RUN_OFF
     else:
@@ -151,7 +163,7 @@ def _read(root: Path, raw: str, start: int) -> str:
     return _clip(body, _READ_CHARS)
 
 
-def _search(root: Path, raw: str, query: str) -> str:
+def _search(root: Path, raw: str, query: str, limit: int = SEARCH_HITS) -> str:
     if not query.strip():
         return "Give a query."
     path = _inside(root, raw)
@@ -163,7 +175,7 @@ def _search(root: Path, raw: str, query: str) -> str:
     budget = _SEARCH_BYTES
     found = [path] if not path.is_dir() else _files(root, path)
     for file in found:
-        if len(hits) >= _SEARCH_MAX or budget <= 0:
+        if len(hits) >= limit or budget <= 0:
             break
         try:
             # _files and _inside checked that the target, links followed, stays inside.
@@ -176,7 +188,7 @@ def _search(root: Path, raw: str, query: str) -> str:
                 continue
             relative = file.relative_to(root)
             hits.append(f"{relative}:{number}:{line.strip()[:160]}")
-            if len(hits) >= _SEARCH_MAX:
+            if len(hits) >= limit:
                 break
     return "\n".join(hits) if hits else "No matches."
 
@@ -193,7 +205,7 @@ def _edit(root: Path, raw: str, old: str, new: str) -> str:
             return "That file is too large to edit. Nothing was changed."
         count = text.count(old)
         if count == 0:
-            return "That text is not in the file."
+            return "That text is not in the file." + _closest(text, old)
         if count > 1:
             return f"That text appears {count} times. Make it unique."
         changed = text.replace(old, new, 1)
@@ -204,22 +216,64 @@ def _edit(root: Path, raw: str, old: str, new: str) -> str:
         return str(refused)
     except OSError:
         return "That file could not be written. Nothing was changed."
-    return f"Edited {path.relative_to(root)}."
+    return f"Edited {path.relative_to(root)}.{_syntax(path, changed)}"
 
 
-def _write(root: Path, raw: str, text: str, overwrite: bool) -> str:
+def _closest(text: str, old: str) -> str:
+    """The file's line nearest the first line of old, quoted exactly, so the model can
+    copy its spaces. Nothing when no line is close."""
+
+    first = next((line.strip() for line in old.splitlines() if line.strip()), "")
+    lines = text.splitlines()
+    if not first or not lines:
+        return ""
+    stripped = [line.strip() for line in lines[:_CLOSEST_LINES]]
+    match = get_close_matches(first, stripped, n=1, cutoff=0.6)
+    if not match:
+        return ""
+    number = stripped.index(match[0])
+    quoted = json.dumps(_clip(lines[number], 200), ensure_ascii=False)
+    return f" Line {number + 1} is close: {quoted}. Copy old exactly, spaces included."
+
+
+def _write(root: Path, raw: str, text: str, overwrite: bool, append: bool = False) -> str:
     if len(text) > _WRITE_MAX:
         return "That text is too long to write."
     path = _inside(root, raw)
     if path is None:
         return _leaves()
     try:
-        files.write_text(root, path, text, overwrite=overwrite, create=True)
+        if append and path.exists():
+            before, cut = files.read_text(root, path, _WRITE_MAX + 1)
+            if cut or len(before) + len(text) + 1 > _WRITE_MAX:
+                return "That append makes the file too large. Nothing was changed."
+            joint = "" if not before or before.endswith("\n") else "\n"
+            text = before + joint + text
+            files.write_text(root, path, text, overwrite=True, create=False)
+        else:
+            files.write_text(root, path, text, overwrite=overwrite, create=True)
     except files.Refused as refused:
         return str(refused)
     except OSError:
         return "That file could not be written."
-    return f"Wrote {path.relative_to(root)}."
+    verb = "Appended to" if append else "Wrote"
+    return f"{verb} {path.relative_to(root)}.{_syntax(path, text)}"
+
+
+def _syntax(path: Path, text: str) -> str:
+    """For a Python file just changed: its first syntax error, so the model can fix it."""
+
+    if path.suffix != ".py":
+        return ""
+    try:
+        ast.parse(text, filename=path.name)
+    except SyntaxError as exc:
+        where = f"line {exc.lineno}" if exc.lineno else "somewhere"
+        message = (exc.msg or "invalid syntax")[:120]
+        return f" SYNTAX ERROR at {where}: {message}. The file no longer parses; fix it."
+    except (ValueError, RecursionError, MemoryError):
+        return " SYNTAX ERROR: the file could not be parsed; fix it."
+    return ""
 
 
 def _run(root: Path, command: str) -> str:
@@ -373,6 +427,24 @@ class _Capture:
 def _files(root: Path, path: Path) -> list[Path]:
     """Regular files under path, links not followed, at most 400, after at most 20000 entries."""
 
+    return _walk(root, path, 400)[0]
+
+
+def every_file(root: Path, limit: int) -> list[Path] | None:
+    """Every regular file under root that a tool may read, or None when there are more
+    than limit or the walk was cut short: a count over them would be a guess."""
+
+    found, whole = _walk(root, root, limit + 1)
+    return found if whole and len(found) <= limit else None
+
+
+def inside(root: Path, raw: str) -> Path | None:
+    """raw resolved inside root, as the tools resolve it, else None."""
+
+    return _inside(root, raw)
+
+
+def _walk(root: Path, path: Path, limit: int) -> tuple[list[Path], bool]:
     found: list[Path] = []
     seen = 0
     for folder, dirs, names in os.walk(path, followlinks=False):
@@ -384,11 +456,11 @@ def _files(root: Path, path: Path) -> list[Path]:
                 continue
             if item.is_file():
                 found.append(item)
-            if len(found) >= 400:
-                return found
+            if len(found) >= limit:
+                return found, False
         if seen >= _WALK_MAX:
-            break
-    return found
+            return found, False
+    return found, True
 
 
 def _stays(root: Path, item: Path) -> bool:
