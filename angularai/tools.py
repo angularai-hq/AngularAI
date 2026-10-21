@@ -1,9 +1,11 @@
+import json
 import os
 import shlex
 import shutil
 import signal
 import subprocess
 import threading
+from difflib import get_close_matches
 from pathlib import Path
 
 from angularai import files
@@ -25,6 +27,7 @@ _RESULT = 1600
 _RUN_TIMEOUT = 20
 _RUN_OUTPUT = 64 * 1024
 _RUN_PATH = "/usr/bin:/bin"
+_CLOSEST_LINES = 5000
 _SKIP = {".git", ".venv", "node_modules", "__pycache__", "dist", ".mypy_cache", ".ruff_cache"}
 # Programs run may start. None of them runs another program, opens a socket, or reads a
 # list of file names from a file. Shells, interpreters, find, xargs, env, git, and make
@@ -193,7 +196,7 @@ def _edit(root: Path, raw: str, old: str, new: str) -> str:
             return "That file is too large to edit. Nothing was changed."
         count = text.count(old)
         if count == 0:
-            return "That text is not in the file."
+            return "That text is not in the file." + _closest(text, old)
         if count > 1:
             return f"That text appears {count} times. Make it unique."
         changed = text.replace(old, new, 1)
@@ -205,6 +208,23 @@ def _edit(root: Path, raw: str, old: str, new: str) -> str:
     except OSError:
         return "That file could not be written. Nothing was changed."
     return f"Edited {path.relative_to(root)}."
+
+
+def _closest(text: str, old: str) -> str:
+    """The file's line nearest the first line of old, quoted exactly, so the model can
+    copy its spaces. Nothing when no line is close."""
+
+    first = next((line.strip() for line in old.splitlines() if line.strip()), "")
+    lines = text.splitlines()
+    if not first or not lines:
+        return ""
+    stripped = [line.strip() for line in lines[:_CLOSEST_LINES]]
+    match = get_close_matches(first, stripped, n=1, cutoff=0.6)
+    if not match:
+        return ""
+    number = stripped.index(match[0])
+    quoted = json.dumps(_clip(lines[number], 200), ensure_ascii=False)
+    return f" Line {number + 1} is close: {quoted}. Copy old exactly, spaces included."
 
 
 def _write(root: Path, raw: str, text: str, overwrite: bool) -> str:

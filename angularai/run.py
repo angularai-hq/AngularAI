@@ -18,6 +18,7 @@ killed mid-step repeats that step on resume. One process at a time holds a run.
 import fcntl
 import json
 import os
+import re
 import time
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
@@ -53,6 +54,11 @@ _HISTORY_CHARS = 120
 _OUTPUT_KEEP = 6000
 _REPEAT = "This repeats a recent step. Use what it found and do the next part of the task."
 _RECENT = 3
+_FILES = 16
+_PATH_CHARS = 100
+_TRAIL = 6
+_DWELL = 4
+_READ_LINE = re.compile(r"^\d+\|")
 
 Status = Literal["running", "done", "budget", "held", "stalled"]
 STATUSES: tuple[Status, ...] = ("running", "done", "budget", "held", "stalled")
@@ -61,8 +67,9 @@ IDLE_LIMIT = 3
 
 RUN_SYSTEM = (
     "You are AngularAI. You work a long task in one directory, one tool call a step. "
-    "WORKING MEMORY holds the task and the steps done; the last call and its output "
-    "follow it. TRACES and RECENT are recalled from earlier steps. "
+    "WORKING MEMORY holds the task, the files read and changed so far, and the steps "
+    "done; the last call and its output follow it. "
+    "TRACES and RECENT are recalled from earlier steps. "
     "Never repeat a step that is done: use its output and do the next part. "
     "Paths are relative to the directory, with their folder: src/a.py. "
     "Give each tool a short note: what is done and what is next. "
@@ -96,6 +103,10 @@ class RunState:
     last_args: str = ""
     last_output: str = ""
     recent: tuple[str, ...] = ()
+    # (path, reads, changes) per file the run has read or changed, newest last.
+    files: tuple[tuple[str, int, int], ...] = ()
+    # The path of each of the last steps, "" for a step with none.
+    trail: tuple[str, ...] = ()
     created: str = ""
     updated: str = ""
     tokens: int = 0
@@ -175,6 +186,8 @@ def save(runs: Path, state: RunState) -> None:
     payload = asdict(state)
     payload["history"] = list(state.history)
     payload["recent"] = list(state.recent)
+    payload["files"] = [list(item) for item in state.files]
+    payload["trail"] = list(state.trail)
     text = json.dumps(payload, ensure_ascii=False, indent=1) + "\n"
     atomic_write(runs / state.id / "state.json", text.encode("utf-8"))
 
@@ -191,6 +204,11 @@ def load(runs: Path, run_id: str) -> RunState:
             raise ValueError("format")
         payload["history"] = tuple(str(item) for item in payload["history"])
         payload["recent"] = tuple(str(item) for item in payload.get("recent", ()))
+        payload["files"] = tuple(
+            (str(path), int(reads), int(changes))
+            for path, reads, changes in payload.get("files", ())
+        )
+        payload["trail"] = tuple(str(item) for item in payload.get("trail", ()))
         state = RunState(**payload)
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise InputRejected(f"The state of run {run_id} is unreadable.") from exc
@@ -238,6 +256,11 @@ def working_memory(state: RunState) -> tuple[str, Exchange | None]:
     head = f"WORKING MEMORY\nTASK\n{state.task}\nSTEP {state.step + 1} of {state.max_steps}\n"
     if state.note:
         head += f"NOTE {state.note}\n"
+    if state.files:
+        head += "FILES (read, changed)\n" + "".join(
+            f"{path[:_PATH_CHARS]}  read {reads}  changed {changes}\n"
+            for path, reads, changes in state.files
+        )
     if state.history:
         head += "DONE\n" + "".join(f"{line}\n" for line in state.history)
     head = head.rstrip()
@@ -360,8 +383,12 @@ def advance(
                     output = "Kept."
                 else:
                     output = execute(directory, result.act, secrets, state.allow_run)
-                if not result.act.problem and any(_same(done, item) for item in state.recent):
+                trail = (*state.trail, _path(result.act))[-_TRAIL:]
+                key = call_key(result.act)
+                if not result.act.problem and key in state.recent:
                     output = f"{output}\n{_REPEAT}"
+                elif dwell := _dwell(trail, _path(result.act)):
+                    output = f"{output}\n{dwell}"
                 state = replace(
                     state,
                     step=number,
@@ -374,7 +401,9 @@ def advance(
                         if result.act.tool not in ("", "remember") and not result.act.problem
                         else ""
                     ),
-                    recent=state.recent if result.act.problem else (*state.recent, done)[-_RECENT:],
+                    files=_touch(state.files, result.act, output),
+                    trail=trail,
+                    recent=state.recent if result.act.problem else (*state.recent, key)[-_RECENT:],
                     last_args=arguments(result.act),
                     last_output=output[:_OUTPUT_KEEP],
                     history=(*state.history, _summary(number, done, output))[-_HISTORY:],
@@ -396,15 +425,48 @@ def advance(
     return state
 
 
-def _same(done: str, last: str) -> bool:
-    """The same tool on the same target: src, src/ and ./src are one directory."""
+def _path(action: Action) -> str:
+    if action.tool not in ("read", "edit", "write") or not action.path.strip():
+        return ""
+    return action.path.strip().removeprefix("./").rstrip("/")
 
-    def norm(text: str) -> str:
-        tool, _, target = text.partition("  ")
-        target = target.strip().removeprefix("./").rstrip("/") or "."
-        return f"{tool} {target}"
 
-    return bool(last) and norm(done) == norm(last)
+def _touch(
+    files: tuple[tuple[str, int, int], ...], action: Action, output: str
+) -> tuple[tuple[str, int, int], ...]:
+    """The file marks after a step: a read that returned lines, or an edit or write
+    that took. A refused or failed call marks nothing. The 16 newest stay."""
+
+    path = _path(action)
+    read = action.tool == "read" and (output == "" or bool(_READ_LINE.match(output)))
+    changed = output.startswith(("Edited ", "Wrote "))
+    if not path or not (read or changed):
+        return files
+    reads, changes = next(((r, c) for p, r, c in files if p == path), (0, 0))
+    kept = tuple(item for item in files if item[0] != path)
+    return (*kept, (path, reads + int(read), changes + int(changed)))[-_FILES:]
+
+
+def _dwell(trail: tuple[str, ...], path: str) -> str:
+    """A note when most of the last steps were on one file: the model may be stuck."""
+
+    count = trail.count(path)
+    if not path or count < _DWELL:
+        return ""
+    return (
+        f"{count} of the last {len(trail)} steps were on {path[:_PATH_CHARS]}. "
+        "If it is done, move to the next part of the task."
+    )
+
+
+def call_key(action: Action) -> str:
+    """One call as a key: tool and arguments, with src, src/ and ./src one path.
+    The same key twice is a repeat; read at another start is not."""
+
+    fields = json.loads(arguments(action))
+    if "path" in fields:
+        fields["path"] = fields["path"].strip().removeprefix("./").rstrip("/") or "."
+    return f"{action.tool} {json.dumps(fields, sort_keys=True, ensure_ascii=False)}"
 
 
 def _now() -> str:

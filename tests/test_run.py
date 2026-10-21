@@ -462,3 +462,50 @@ def test_the_log_keeps_the_tool_and_never_its_output(tmp_path: Path) -> None:
     records = [json.loads(line)["user"] for line in (store.root / "passes.jsonl").open()]
     assert records[1] == f"RUN {state.id} STEP 2\nLAST read  notes.txt"
     assert "kettle" not in (store.root / "passes.jsonl").read_text()
+
+
+def test_files_mark_reads_and_changes_that_took(tmp_path: Path) -> None:
+    runs, state, store = begin(tmp_path, native=False)
+    scripted = Scripted(
+        script=(
+            act("read", path="./notes.txt"),
+            act("read", path="missing.txt"),
+            act("edit", path="notes.txt", old="green", new="blue"),
+            act("edit", path="notes.txt", old="absent", new="x"),
+            act("write", path="out/a.txt", text="a"),
+            finished(),
+        )
+    )
+    done = run_loop.advance(runs, state, store, scripted)
+    assert done.files == (("notes.txt", 1, 1), ("out/a.txt", 0, 1))
+    assert "FILES (read, changed)\nnotes.txt  read 1  changed 1\nout/a.txt" in scripted.seen[5].user
+    assert run_loop.load(runs, state.id).files == done.files
+
+
+def test_files_keep_the_newest_sixteen() -> None:
+    files: tuple[tuple[str, int, int], ...] = ()
+    for n in range(20):
+        files = run_loop._touch(files, Action("write", path=f"f{n}"), f"Wrote f{n}.")
+    assert len(files) == 16 and files[0][0] == "f4" and files[-1] == ("f19", 0, 1)
+    assert run_loop._touch(files, Action("list", path="."), "x") == files
+    assert run_loop._touch((), Action("read", path="e.txt"), "") == (("e.txt", 1, 0),)
+
+
+def test_dwelling_on_one_file_is_named(tmp_path: Path) -> None:
+    runs, state, store = begin(tmp_path, native=False)
+    reads = tuple(
+        Integration("r", (), (), Action("read", path="notes.txt", start=n)) for n in range(2, 6)
+    )
+    scripted = Scripted(script=(*reads, finished()))
+    run_loop.advance(runs, state, store, scripted)
+    assert "steps were on notes.txt" not in scripted.seen[3].user
+    assert "4 of the last 4 steps were on notes.txt" in scripted.seen[4].user
+
+
+def test_a_repeat_is_the_same_call_not_the_same_file() -> None:
+    assert run_loop.call_key(Action("list", path="./src/")) == run_loop.call_key(
+        Action("list", path="src")
+    )
+    assert run_loop.call_key(Action("read", path="a", start=2)) != run_loop.call_key(
+        Action("read", path="a")
+    )
