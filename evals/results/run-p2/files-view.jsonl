@@ -1,0 +1,12 @@
+{"files_done": 8, "files_correct": 8, "files": 8, "summary": false, "summary_listed": 0, "summary_correct": 0, "steps": 28, "status": "done", "tokens_mean": 862, "seconds_mean": 9.0, "view": "list", "rep": "t0"}
+{"files_done": 8, "files_correct": 8, "files": 8, "summary": true, "summary_listed": 8, "summary_correct": 1, "steps": 31, "status": "done", "tokens_mean": 893, "seconds_mean": 12.3, "view": "partial", "rep": "t0"}
+{"files_done": 6, "files_correct": 6, "files": 8, "summary": true, "summary_listed": 8, "summary_correct": 1, "steps": 33, "status": "done", "tokens_mean": 813, "seconds_mean": 7.5, "view": "off", "rep": "t0"}
+{"files_done": 1, "files_correct": 1, "files": 8, "summary": false, "summary_listed": 0, "summary_correct": 0, "steps": 4, "status": "done", "tokens_mean": 358, "seconds_mean": 9.0, "view": "list", "rep": "s1"}
+{"files_done": 0, "files_correct": 0, "files": 8, "summary": false, "summary_listed": 0, "summary_correct": 0, "steps": 3, "status": "done", "tokens_mean": 408, "seconds_mean": 5.5, "view": "partial", "rep": "s1"}
+{"files_done": 5, "files_correct": 5, "files": 8, "summary": true, "summary_listed": 8, "summary_correct": 3, "steps": 28, "status": "done", "tokens_mean": 966, "seconds_mean": 8.7, "view": "off", "rep": "s1"}
+{"files_done": 8, "files_correct": 8, "files": 8, "summary": true, "summary_listed": 8, "summary_correct": 2, "steps": 26, "status": "done", "tokens_mean": 795, "seconds_mean": 8.2, "view": "list", "rep": "s2"}
+{"files_done": 7, "files_correct": 7, "files": 8, "summary": true, "summary_listed": 8, "summary_correct": 1, "steps": 40, "status": "budget", "tokens_mean": 951, "seconds_mean": 10.8, "view": "partial", "rep": "s2"}
+{"files_done": 8, "files_correct": 8, "files": 8, "summary": false, "summary_listed": 0, "summary_correct": 0, "steps": 32, "status": "done", "tokens_mean": 798, "seconds_mean": 6.9, "view": "off", "rep": "s2"}
+{"files_done": 8, "files_correct": 8, "files": 8, "summary": false, "summary_listed": 0, "summary_correct": 0, "steps": 33, "status": "done", "tokens_mean": 859, "seconds_mean": 7.8, "view": "list", "rep": "s3"}
+{"files_done": 7, "files_correct": 7, "files": 8, "summary": true, "summary_listed": 8, "summary_correct": 1, "steps": 26, "status": "done", "tokens_mean": 869, "seconds_mean": 13.2, "view": "partial", "rep": "s3"}
+{"files_done": 4, "files_correct": 4, "files": 8, "summary": true, "summary_listed": 8, "summary_correct": 1, "steps": 20, "status": "done", "tokens_mean": 624, "seconds_mean": 6.8, "view": "off", "rep": "s3"}
