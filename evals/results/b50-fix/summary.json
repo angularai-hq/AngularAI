@@ -16,11 +16,16 @@
      "run": "v1-r2",
      "judge": 52.0,
      "contains": 33.3
+    },
+    {
+     "run": "v1-r3",
+     "judge": 44.0,
+     "contains": 33.3
     }
    ],
-   "judge_mean": 50.0,
-   "judge_spread": 4.0,
-   "contains_mean": 32.1
+   "judge_mean": 48.0,
+   "judge_spread": 8.0,
+   "contains_mean": 32.5
   },
   "v2": {
    "runs": [
@@ -45,7 +50,7 @@
    "contains_mean": 38.1
   }
  },
- "spread": 4.0,
- "v2_minus_v1": 4.7,
- "v2_wins_beyond_spread": true
+ "spread": 8.0,
+ "v2_minus_v1": 6.7,
+ "v2_wins_beyond_spread": false
 }
