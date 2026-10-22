@@ -210,6 +210,54 @@
       "prompt_tokens_est_mean": 1974.9,
       "seconds_p50": 21.1,
       "errors": 2.0
+    },
+    {
+      "file": "v2-r3.judged.jsonl",
+      "arm": "v2",
+      "model": "aa-qwen2.5-3b",
+      "budget": 2000,
+      "judge_model": "aa-qwen3-4b",
+      "complete": true,
+      "n": 50,
+      "judge": 54.0,
+      "contains": 40.5,
+      "abstention": 80.0,
+      "per_type": {
+        "knowledge-update": {
+          "n": 9,
+          "judge": 77.8,
+          "contains": 57.1
+        },
+        "multi-session": {
+          "n": 11,
+          "judge": 27.3,
+          "contains": 22.2
+        },
+        "single-session-assistant": {
+          "n": 6,
+          "judge": 66.7,
+          "contains": 33.3
+        },
+        "single-session-preference": {
+          "n": 3,
+          "judge": 66.7,
+          "contains": null
+        },
+        "single-session-user": {
+          "n": 8,
+          "judge": 87.5,
+          "contains": 71.4
+        },
+        "temporal-reasoning": {
+          "n": 13,
+          "judge": 30.8,
+          "contains": 30.8
+        }
+      },
+      "prompt_tokens_mean": null,
+      "prompt_tokens_est_mean": 1974.3,
+      "seconds_p50": 22.5,
+      "errors": 3.0
     }
   ]
 }
