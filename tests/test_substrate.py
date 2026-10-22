@@ -99,6 +99,31 @@ def test_a_bad_reply_is_asked_once_more() -> None:
     assert "Return only the JSON object." in messages[1]["content"]
 
 
+def test_the_formats_placeholder_as_a_reply_is_asked_once_more() -> None:
+    captured: list[Mapping[str, object]] = []
+
+    def transport(
+        url: str,
+        headers: dict[str, str],
+        payload: Mapping[str, object],
+        timeout: float,
+    ) -> tuple[int, bytes]:
+        del url, headers, timeout
+        captured.append(payload)
+        return 200, reply("..." if len(captured) == 1 else "Nine months.")
+
+    model = OpenAICompatible(
+        model="demo",
+        base_url="https://api.openai.com/v1",
+        api_key=KEY,
+        json_mode=True,
+        completion_field="max_completion_tokens",
+        transport=transport,
+    )
+    assert model.integrate(workspace()).reply == "Nine months."
+    assert len(captured) == 2
+
+
 def test_json_mode_rejection_retries_without_a_third_call() -> None:
     captured: list[Mapping[str, object]] = []
 

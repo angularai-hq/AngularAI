@@ -8,7 +8,7 @@ from dataclasses import replace
 from secrets import token_hex
 from typing import Protocol, assert_never
 
-from angularai.budget import estimate_tokens
+from angularai.budget import PARSE_NUDGE, estimate_tokens
 from angularai.errors import (
     AngularAIError,
     AuthFailed,
@@ -46,7 +46,6 @@ from angularai.secrets import environment_secrets, redact
 Answer = tuple[int, bytes] | tuple[int, bytes, Mapping[str, str]]
 # (url, headers, payload, read timeout in seconds) -> answer
 Transport = Callable[[str, dict[str, str], Mapping[str, object], float], Answer]
-_PARSE_NUDGE = "\n\nReturn only the JSON object."
 _NO_REPLY = "returned no reply. Nothing was written."
 
 
@@ -192,7 +191,7 @@ class OpenAICompatible:
         try:
             return parse_integration(text)
         except SubstrateUnreadable:
-            extra = workspace.user + _PARSE_NUDGE
+            extra = workspace.user + PARSE_NUDGE
             projected = estimate_tokens(workspace.system) + estimate_tokens(extra)
             if projected > workspace.budget:
                 raise
@@ -293,7 +292,7 @@ class Anthropic:
         try:
             return parse_integration(text)
         except SubstrateUnreadable:
-            extra = workspace.user + _PARSE_NUDGE
+            extra = workspace.user + PARSE_NUDGE
             projected = estimate_tokens(workspace.system) + estimate_tokens(extra)
             if projected > workspace.budget:
                 raise
