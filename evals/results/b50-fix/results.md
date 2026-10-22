@@ -1,0 +1,4 @@
+| arm | model | budget | n | judge % | contains % | est. tokens | server tokens | p50 s |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| v1 | aa-qwen2.5-3b | 2000 | 50 | 48.0 | 31.0 | 1902.3 | - | 16.9 |
+| v2 | aa-qwen2.5-3b | 2000 | 50 | 54.0 | 38.1 | 1974.1 | - | 25.1 |

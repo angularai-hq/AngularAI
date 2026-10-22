@@ -1,0 +1,36 @@
+{
+ "code": "e29563f (angularai/ identical to feat/v2-recall head)",
+ "model": "aa-qwen2.5-3b",
+ "judge_model": "aa-qwen3-4b",
+ "budget": 2000,
+ "embed_model": "aa-nomic-embed (v2)",
+ "arms": {
+  "v1": {
+   "runs": [
+    {
+     "run": "v1-r1",
+     "judge": 48.0,
+     "contains": 31.0
+    }
+   ],
+   "judge_mean": 48.0,
+   "judge_spread": 0.0,
+   "contains_mean": 31.0
+  },
+  "v2": {
+   "runs": [
+    {
+     "run": "v2-r1",
+     "judge": 54.0,
+     "contains": 38.1
+    }
+   ],
+   "judge_mean": 54.0,
+   "judge_spread": 0.0,
+   "contains_mean": 38.1
+  }
+ },
+ "spread": 0.0,
+ "v2_minus_v1": 6.0,
+ "v2_wins_beyond_spread": false
+}
